@@ -65,6 +65,11 @@ type SchedulesPayload = {
   schedules: PowerSchedule[];
 };
 
+type PendingDesiredStatus = {
+  patch: Partial<AcStatus>;
+  expiresAt: number;
+};
+
 const FALLBACK_CONTROLS: Controls = {
   temperature: {
     min: 16,
@@ -99,7 +104,10 @@ export function AirConditionerDashboard() {
   const [schedules, setSchedules] = useState<PowerSchedule[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>("status");
+  const [awaitingDeviceSync, setAwaitingDeviceSync] = useState(false);
   const hasSyncedTemperature = useRef(false);
+  const delayedRefreshTimers = useRef<number[]>([]);
+  const pendingDesiredStatus = useRef<PendingDesiredStatus | null>(null);
 
   const fetchStatus = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setPendingAction("status");
@@ -107,18 +115,19 @@ export function AirConditionerDashboard() {
 
     try {
       const payload = await requestJson<StatusPayload>("/api/ac/status");
-      setStatus(payload.status);
+      const nextStatus = applyPendingDesiredStatus(payload.status);
+      setStatus(nextStatus);
       if (payload.controls) setControls(payload.controls);
 
       if (!hasSyncedTemperature.current) {
         const temperatureRange = payload.controls?.temperature ?? FALLBACK_CONTROLS.temperature;
-        if (payload.status.mode === "wind") {
+        if (nextStatus.mode === "wind") {
           setTargetTemperature(getWindSliderValue(temperatureRange));
-        } else if (typeof payload.status.coolingSetpoint === "number") {
-          setTargetTemperature(payload.status.coolingSetpoint);
+        } else if (typeof nextStatus.coolingSetpoint === "number") {
+          setTargetTemperature(nextStatus.coolingSetpoint);
         }
-        if (typeof payload.status.coolingSetpoint === "number") {
-          setScheduleOnTemperature(payload.status.coolingSetpoint);
+        if (typeof nextStatus.coolingSetpoint === "number") {
+          setScheduleOnTemperature(nextStatus.coolingSetpoint);
         }
         hasSyncedTemperature.current = true;
       }
@@ -151,7 +160,10 @@ export function AirConditionerDashboard() {
       fetchSchedules({ silent: true });
     }, 30_000);
 
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearInterval(interval);
+      delayedRefreshTimers.current.forEach((timer) => window.clearTimeout(timer));
+    };
   }, [fetchSchedules, fetchStatus]);
 
   const powerOn = status?.power === "on";
@@ -194,11 +206,23 @@ export function AirConditionerDashboard() {
         },
         body: JSON.stringify(body),
       });
-      setStatus(payload.status);
-      if (payload.status.mode === "wind") {
+      const optimisticPatch = buildOptimisticStatusPatch(payload.status, action, body);
+      if (Object.keys(optimisticPatch).length > 0) {
+        pendingDesiredStatus.current = {
+          patch: optimisticPatch,
+          expiresAt: Date.now() + 15_000,
+        };
+        setAwaitingDeviceSync(true);
+      }
+
+      const optimisticStatus = applyStatusPatch(payload.status, optimisticPatch);
+      setStatus(optimisticStatus);
+      queueDelayedStatusRefresh();
+
+      if (optimisticStatus.mode === "wind") {
         setTargetTemperature(getWindSliderValue(controls.temperature));
-      } else if (typeof payload.status.coolingSetpoint === "number") {
-        setTargetTemperature(payload.status.coolingSetpoint);
+      } else if (typeof optimisticStatus.coolingSetpoint === "number") {
+        setTargetTemperature(optimisticStatus.coolingSetpoint);
       }
     } catch (requestError) {
       setError(toErrorMessage(requestError));
@@ -252,6 +276,34 @@ export function AirConditionerDashboard() {
       mode: "cool",
       temperature: targetTemperature,
     });
+  }
+
+  function queueDelayedStatusRefresh() {
+    delayedRefreshTimers.current.forEach((timer) => window.clearTimeout(timer));
+    delayedRefreshTimers.current = [4_000, 10_000, 16_000].map((delay) =>
+      window.setTimeout(() => {
+        fetchStatus({ silent: true });
+      }, delay),
+    );
+  }
+
+  function applyPendingDesiredStatus(nextStatus: AcStatus) {
+    const pending = pendingDesiredStatus.current;
+    if (!pending) return nextStatus;
+
+    if (Date.now() > pending.expiresAt) {
+      pendingDesiredStatus.current = null;
+      setAwaitingDeviceSync(false);
+      return nextStatus;
+    }
+
+    if (statusMatchesPatch(nextStatus, pending.patch)) {
+      pendingDesiredStatus.current = null;
+      setAwaitingDeviceSync(false);
+      return nextStatus;
+    }
+
+    return applyStatusPatch(nextStatus, pending.patch);
   }
 
   async function cancelSchedule(id: string) {
@@ -325,7 +377,10 @@ export function AirConditionerDashboard() {
                   </p>
                 </div>
                 <div className="shrink-0 pt-1 text-right text-xs font-semibold text-slate-500">
-                  <span className="block whitespace-nowrap">동기화 {updatedAt}</span>
+                  <span className="block whitespace-nowrap">
+                    동기화 {updatedAt}
+                    {awaitingDeviceSync ? " · 반영 중" : ""}
+                  </span>
                 </div>
               </div>
 
@@ -770,6 +825,55 @@ function toErrorMessage(error: unknown) {
 
 function formatNumber(value: number | null | undefined) {
   return typeof value === "number" ? String(value) : "--";
+}
+
+function buildOptimisticStatusPatch(
+  currentStatus: AcStatus,
+  action: string,
+  body: Record<string, unknown>,
+): Partial<AcStatus> {
+  const patch: Partial<AcStatus> = {};
+
+  if (body.power === "on") {
+    patch.power = "on";
+  }
+
+  if (body.power === "off" && currentStatus.power === "on") {
+    patch.mode = "wind";
+  }
+
+  if (typeof body.fanMode === "string") {
+    patch.fanMode = body.fanMode;
+  }
+
+  if (typeof body.mode === "string") {
+    patch.mode = body.mode;
+  }
+
+  const temperature = Number(body.temperature);
+  if (
+    (action === "temperature" || body.mode === "cool") &&
+    Number.isFinite(temperature)
+  ) {
+    patch.mode = body.mode === "cool" ? "cool" : patch.mode;
+    patch.coolingSetpoint = temperature;
+    patch.coolingSetpointUnit = currentStatus.coolingSetpointUnit ?? "C";
+  }
+
+  return patch;
+}
+
+function applyStatusPatch(status: AcStatus, patch: Partial<AcStatus>) {
+  return {
+    ...status,
+    ...patch,
+  };
+}
+
+function statusMatchesPatch(status: AcStatus, patch: Partial<AcStatus>) {
+  return (Object.entries(patch) as Array<[keyof AcStatus, AcStatus[keyof AcStatus]]>).every(
+    ([key, value]) => status[key] === value,
+  );
 }
 
 function formatTemperatureUnit(unit: string | null | undefined) {
