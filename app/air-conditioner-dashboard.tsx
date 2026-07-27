@@ -722,6 +722,12 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 
   const payload = (await response.json().catch(() => ({}))) as { error?: string };
 
+  if (response.status === 401) {
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.assign(`/login?next=${next}`);
+    throw new Error("로그인이 필요합니다.");
+  }
+
   if (!response.ok) {
     throw new Error(payload.error ?? `Request failed with status ${response.status}.`);
   }

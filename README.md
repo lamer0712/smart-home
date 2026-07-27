@@ -39,6 +39,7 @@ cp .env.example .env.local
 SMARTTHINGS_TOKEN=your_personal_access_token
 SMARTTHINGS_DEVICE_ID=your_air_conditioner_device_id
 SMARTTHINGS_LOCATION_ID=your_location_id
+APP_PASSWORD=change_this_dashboard_password
 ```
 
 선택 값:
@@ -107,6 +108,7 @@ npm run build
 SMARTTHINGS_TOKEN=your_personal_access_token
 SMARTTHINGS_DEVICE_ID=your_air_conditioner_device_id
 SMARTTHINGS_LOCATION_ID=your_location_id
+APP_PASSWORD=change_this_dashboard_password
 ```
 
 5. 필요한 경우 선택 환경 변수도 같은 화면에 추가합니다.
@@ -116,7 +118,8 @@ SMARTTHINGS_LOCATION_ID=your_location_id
 
 - `SMARTTHINGS_TOKEN`은 `NEXT_PUBLIC_` 접두사를 붙이지 마세요.
 - 클라이언트 컴포넌트는 SmartThings API를 직접 호출하지 않고 `/api/ac/*`만 호출합니다.
-- Tailscale처럼 신뢰하는 사설 네트워크 뒤에서만 노출하는 것을 권장합니다.
+- `APP_PASSWORD`를 설정하면 대시보드와 API Route가 앱 자체 비밀번호로 보호됩니다.
+- Vercel의 `Deployment Protection`을 끄더라도 앱 비밀번호는 유지됩니다.
 - `.env`, `.env.local`, `.vercel`은 `.gitignore`에 포함되어 있습니다.
 
 ## API Routes
