@@ -6,9 +6,7 @@ import {
   Loader2,
   Power,
   RefreshCw,
-  Thermometer,
   Trash2,
-  Wind,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -173,7 +171,6 @@ export function AirConditionerDashboard() {
   const windSliderValue = getWindSliderValue(controls.temperature);
   const targetIsWind = isWindSliderValue(targetTemperature, controls.temperature);
   const targetClimateLabel = targetIsWind ? "송풍" : `${targetTemperature}℃`;
-  const currentClimateIsWind = status?.mode === "wind";
   const roomTemperatureLabel =
     typeof status?.roomTemperature === "number"
       ? `${status.roomTemperature}${formatTemperatureUnit(status.roomTemperatureUnit)}`
@@ -268,6 +265,11 @@ export function AirConditionerDashboard() {
     }
   }
 
+  async function togglePower() {
+    clearClimateCommandTimer();
+    await submitCommand("power-toggle", "/api/ac/power", { power: powerOn ? "off" : "on" });
+  }
+
   function changeTargetTemperature(temperature: number) {
     setTargetTemperature(temperature);
     queueClimateCommand(temperature, targetFanMode);
@@ -279,9 +281,7 @@ export function AirConditionerDashboard() {
   }
 
   function queueClimateCommand(temperature: number, fanMode: string) {
-    if (climateCommandTimer.current) {
-      window.clearTimeout(climateCommandTimer.current);
-    }
+    clearClimateCommandTimer();
 
     climateCommandTimer.current = window.setTimeout(() => {
       void submitCommand(
@@ -290,6 +290,12 @@ export function AirConditionerDashboard() {
         buildClimateCommandBody(temperature, fanMode, controls.temperature),
       );
     }, 450);
+  }
+
+  function clearClimateCommandTimer() {
+    if (!climateCommandTimer.current) return;
+    window.clearTimeout(climateCommandTimer.current);
+    climateCommandTimer.current = null;
   }
 
   function queueDelayedStatusRefresh() {
@@ -380,70 +386,44 @@ export function AirConditionerDashboard() {
           </div>
         ) : null}
 
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div>
-            <div>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-500">상태</p>
-                  <p className="mt-2 text-5xl font-bold tracking-normal text-slate-950">
-                    {powerOn ? "ON" : status?.power === "off" ? "OFF" : "--"}
-                  </p>
-                </div>
-                <div className="shrink-0 pt-1 text-right text-xs font-semibold text-slate-500">
-                  <span className="block whitespace-nowrap">
-                    동기화 {updatedAt}
-                    {awaitingDeviceSync ? " · 반영 중" : ""}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => submitCommand("power-on", "/api/ac/power", { power: "on" })}
-                  disabled={pendingAction !== null}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-sky-600 px-4 text-sm font-bold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {pendingAction === "power-on" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Power className="h-4 w-4" />
-                  )}
-                  켜기
-                </button>
-                <button
-                  type="button"
-                  onClick={() => submitCommand("power-off", "/api/ac/power", { power: "off" })}
-                  disabled={pendingAction !== null}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {pendingAction === "power-off" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Power className="h-4 w-4" />
-                  )}
-                끄기
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <section>
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-500">냉방 / 송풍</p>
+                <p className="text-sm font-semibold text-slate-500">상태</p>
                 <h2 className="mt-1 text-4xl font-bold text-slate-950">
                   {roomTemperatureLabel}
                 </h2>
               </div>
-              {currentClimateIsWind ? (
-                <Wind className="h-8 w-8 text-sky-700" />
-              ) : (
-                <Thermometer className="h-8 w-8 text-sky-700" />
-              )}
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <span className="text-right text-xs font-semibold text-slate-500">
+                  동기화 {updatedAt}
+                  {awaitingDeviceSync ? " · 반영 중" : ""}
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={powerOn}
+                  aria-label="전원"
+                  onClick={togglePower}
+                  disabled={pendingAction !== null}
+                  className={`inline-flex h-9 w-16 items-center rounded-full p-1 transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    powerOn ? "bg-sky-600" : "bg-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm transition ${
+                      powerOn ? "translate-x-7 text-sky-700" : "translate-x-0 text-slate-500"
+                    }`}
+                  >
+                    {pendingAction === "power-toggle" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Power className="h-4 w-4" />
+                    )}
+                  </span>
+                </button>
+              </div>
             </div>
 
             <div className="mt-6">
