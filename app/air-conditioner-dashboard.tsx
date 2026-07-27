@@ -159,6 +159,10 @@ export function AirConditionerDashboard() {
   const windSliderValue = getWindSliderValue(controls.temperature);
   const targetIsWind = isWindSliderValue(targetTemperature, controls.temperature);
   const targetClimateLabel = targetIsWind ? "송풍" : `${targetTemperature}℃`;
+  const currentFanMode = status?.fanMode ?? null;
+  const currentFanModeLabel = currentFanMode
+    ? (FAN_MODE_LABELS[currentFanMode] ?? currentFanMode)
+    : "--";
   const updatedAt = useMemo(() => {
     if (!status?.updatedAt) return "아직 동기화 전";
     return new Intl.DateTimeFormat("ko-KR", {
@@ -349,7 +353,7 @@ export function AirConditionerDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-5 border-t border-slate-200 pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-5 border-t border-slate-200 pt-5 sm:grid-cols-3 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
               <StatusMetric
                 icon={Thermometer}
                 label="실내 온도"
@@ -368,12 +372,6 @@ export function AirConditionerDashboard() {
                 value={formatNumber(status?.coolingSetpoint)}
                 unit={formatTemperatureUnit(status?.coolingSetpointUnit)}
               />
-              <StatusMetric
-                icon={Fan}
-                label="바람세기"
-                value={status?.fanMode ? (FAN_MODE_LABELS[status.fanMode] ?? status.fanMode) : "--"}
-                unit=""
-              />
             </div>
           </div>
         </section>
@@ -382,11 +380,9 @@ export function AirConditionerDashboard() {
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-500">바람세기</p>
+                <p className="text-sm font-semibold text-slate-500">현재 바람세기</p>
                 <h2 className="mt-1 text-xl font-bold text-slate-950">
-                  {status?.fanMode
-                    ? (FAN_MODE_LABELS[status.fanMode] ?? status.fanMode)
-                    : "--"}
+                  {currentFanModeLabel}
                 </h2>
               </div>
               <Fan className="h-7 w-7 text-sky-700" />
@@ -394,7 +390,7 @@ export function AirConditionerDashboard() {
 
             <div className="mt-5 grid grid-cols-2 gap-2">
               {controls.fanModes.map((fanMode) => {
-                const selected = status?.fanMode === fanMode;
+                const selected = currentFanMode === fanMode;
                 const action = `fan-${fanMode}`;
 
                 return (
