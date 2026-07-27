@@ -145,7 +145,7 @@ APP_PASSWORD=change_this_dashboard_password
 { "power": "off" }
 ```
 
-`off` 요청은 바로 전원을 끄지 않습니다. 현재 전원이 켜져 있으면 송풍 모드로 전환하고 1시간 뒤 전원을 끄는 SmartThings Rule을 생성합니다. 이미 꺼져 있으면 추가 예약 없이 현재 상태만 반환합니다.
+`off` 요청은 바로 전원을 끄지 않습니다. 현재 전원이 켜져 있으면 송풍 모드로 전환하고 1시간 뒤 전원을 끄는 SmartThings Rule을 생성합니다. 이 Rule은 화면에서 `꺼짐 타이머`로 표시됩니다. 이미 꺼져 있으면 추가 예약 없이 현재 상태만 반환합니다.
 
 ### `POST /api/ac/temperature`
 
@@ -185,7 +185,7 @@ APP_PASSWORD=change_this_dashboard_password
 
 ### `GET /api/ac/schedules`
 
-전원 예약 목록을 반환합니다.
+전원 예약과 꺼짐 타이머 목록을 반환합니다.
 
 ### `POST /api/ac/schedules`
 
@@ -205,7 +205,7 @@ APP_PASSWORD=change_this_dashboard_password
 
 ### `DELETE /api/ac/schedules/:id`
 
-대기 중인 예약을 취소합니다.
+대기 중인 예약이나 꺼짐 타이머를 취소합니다.
 
 ## 예약 동작
 

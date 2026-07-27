@@ -55,6 +55,7 @@ type PowerSchedule = {
   mode?: "cool";
   coolingSetpoint?: number;
   windDown?: boolean;
+  timer?: boolean;
   finalOffAt?: string;
   source?: "smartthings-rule";
 };
@@ -538,7 +539,7 @@ export function AirConditionerDashboard() {
 
           <div className="mt-6">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-bold text-slate-800">대기 중인 예약</p>
+              <p className="text-sm font-bold text-slate-800">대기 중인 예약 / 타이머</p>
               <button
                 type="button"
                 onClick={() => fetchSchedules()}
@@ -550,7 +551,7 @@ export function AirConditionerDashboard() {
                 ) : (
                   <RefreshCw className="h-3.5 w-3.5" />
                 )}
-                예약 새로고침
+                새로고침
               </button>
             </div>
 
@@ -567,7 +568,7 @@ export function AirConditionerDashboard() {
               </div>
             ) : (
               <p className="mt-3 rounded-md bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
-                대기 중인 예약이 없습니다.
+                대기 중인 예약이나 타이머가 없습니다.
               </p>
             )}
           </div>
@@ -583,10 +584,10 @@ export function AirConditionerDashboard() {
                   >
                     <div>
                       <p className="text-sm font-bold text-slate-900">
-                        {schedule.power === "on" ? "켜짐" : "꺼짐"} 예약
+                        {formatScheduleTitle(schedule)}
                       </p>
                       <p className="mt-1 text-xs font-semibold text-slate-500">
-                        {formatDateTime(schedule.runAt)} · {formatScheduleSummary(schedule)} ·{" "}
+                        {formatScheduleDetail(schedule)} ·{" "}
                         {formatScheduleStatus(schedule)}
                       </p>
                     </div>
@@ -702,10 +703,10 @@ function ScheduleRow({
     <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-4 py-3">
       <div>
         <p className="text-sm font-bold text-slate-950">
-          {schedule.power === "on" ? "켜짐" : "꺼짐"} 예약
+          {formatScheduleTitle(schedule)}
         </p>
         <p className="mt-1 text-xs font-semibold text-slate-500">
-          {formatDateTime(schedule.runAt)} · {formatScheduleSummary(schedule)}
+          {formatScheduleDetail(schedule)}
         </p>
       </div>
       <button
@@ -878,17 +879,28 @@ function formatScheduleStatus(schedule: PowerSchedule) {
   return "대기 중";
 }
 
-function formatScheduleSummary(schedule: PowerSchedule) {
+function formatScheduleTitle(schedule: PowerSchedule) {
+  if (schedule.power === "on") return "켜짐 예약";
+  if (schedule.timer) return "꺼짐 타이머";
+  return "꺼짐 예약";
+}
+
+function formatScheduleDetail(schedule: PowerSchedule) {
   if (schedule.power === "off") {
-    if (schedule.windDown && schedule.finalOffAt) {
-      return `송풍 1시간 후 끄기 (${formatDateTime(schedule.finalOffAt)})`;
+    const offAt = schedule.finalOffAt ?? schedule.runAt;
+    if (schedule.timer) {
+      return `전원 꺼짐 ${formatDateTime(offAt)}`;
     }
 
-    return "송풍 1시간 후 끄기";
+    if (schedule.windDown) {
+      return `송풍 시작 ${formatDateTime(schedule.runAt)} · 전원 꺼짐 ${formatDateTime(offAt)}`;
+    }
+
+    return `전원 꺼짐 ${formatDateTime(schedule.runAt)}`;
   }
-  if (schedule.mode !== "cool") return "전원 켜기";
+  if (schedule.mode !== "cool") return `전원 켜짐 ${formatDateTime(schedule.runAt)}`;
 
   const temperature =
     typeof schedule.coolingSetpoint === "number" ? `${schedule.coolingSetpoint}℃` : "온도 미확인";
-  return `냉방 · ${temperature}`;
+  return `${formatDateTime(schedule.runAt)} · 냉방 · ${temperature}`;
 }

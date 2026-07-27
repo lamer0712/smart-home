@@ -23,6 +23,7 @@ export type PowerSchedule = {
   mode?: "cool" | "wind";
   coolingSetpoint?: number;
   windDown?: boolean;
+  timer?: boolean;
   finalOffAt?: string;
   source: "smartthings-rule";
 };
@@ -92,6 +93,7 @@ type RulesResponse = {
 
 const RULE_NAME_PREFIX = "SmartThings AC Reservation";
 const WIND_DOWN_RULE_MARKER = "WIND_DOWN";
+const WIND_DOWN_TIMER_RULE_MARKER = `${WIND_DOWN_RULE_MARKER}_OFF`;
 const WIND_DOWN_DURATION_HOURS = 1;
 
 export async function ensureSchedulerStarted() {
@@ -418,6 +420,7 @@ function ruleToSchedule(rule: Rule): PowerSchedule | null {
   );
   const sleepDurationMs = readSleepDurationMs(everyAction?.actions);
   const windDown = rule.name.includes(WIND_DOWN_RULE_MARKER);
+  const timer = rule.name.includes(WIND_DOWN_TIMER_RULE_MARKER);
 
   if (!specific || (power !== "on" && power !== "off")) {
     return null;
@@ -433,6 +436,7 @@ function ruleToSchedule(rule: Rule): PowerSchedule | null {
     power === "off"
       ? new Date(runAtMs + (sleepDurationMs ?? 0)).toISOString()
       : undefined;
+  const completedAtMs = finalOffAt ? new Date(finalOffAt).getTime() : runAtMs;
   const mode = readStringArgument(modeCommand);
 
   return {
@@ -440,11 +444,12 @@ function ruleToSchedule(rule: Rule): PowerSchedule | null {
     power,
     runAt,
     createdAt: rule.dateCreated,
-    status: runAtMs > Date.now() ? "pending" : "executed",
-    executedAt: runAtMs <= Date.now() ? runAt : undefined,
+    status: completedAtMs > Date.now() ? "pending" : "executed",
+    executedAt: completedAtMs <= Date.now() ? new Date(completedAtMs).toISOString() : undefined,
     mode: mode === "cool" || mode === "wind" ? mode : undefined,
     coolingSetpoint: readNumberArgument(coolingSetpointCommand),
     windDown,
+    timer,
     finalOffAt,
     source: "smartthings-rule",
   };
