@@ -24,3 +24,16 @@ input,
 select {
   font: inherit;
 }
+
+.schedule-datetime-input {
+  line-height: 1;
+  text-align: left;
+}
+
+.schedule-datetime-input::-webkit-date-and-time-value,
+.schedule-datetime-input::-webkit-datetime-edit {
+  display: flex;
+  align-items: center;
+  min-height: 100%;
+  text-align: left;
+}

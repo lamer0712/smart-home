@@ -626,7 +626,7 @@ function ScheduleForm({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
-          className="block h-11 w-full max-w-full min-w-0 appearance-none rounded-md border border-slate-300 bg-white px-3 text-base font-semibold text-slate-900 shadow-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
+          className="schedule-datetime-input block h-11 w-full max-w-full min-w-0 appearance-none rounded-md border border-slate-300 bg-white px-3 py-0 text-base font-semibold leading-none text-slate-900 shadow-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
         />
       </div>
       {power === "on" && temperatureRange && typeof temperature === "number" && onTemperatureChange ? (
