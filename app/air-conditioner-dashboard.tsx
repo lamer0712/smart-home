@@ -3,7 +3,6 @@
 import {
   AlertCircle,
   CalendarClock,
-  Droplets,
   Fan,
   Loader2,
   Power,
@@ -360,7 +359,7 @@ export function AirConditionerDashboard() {
         ) : null}
 
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <div>
             <div>
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -405,21 +404,6 @@ export function AirConditionerDashboard() {
                 송풍 후 끄기
                 </button>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-4 gap-y-5 border-t border-slate-200 pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-              <StatusMetric
-                icon={Thermometer}
-                label="실내 온도"
-                value={formatNumber(status?.roomTemperature)}
-                unit={formatTemperatureUnit(status?.roomTemperatureUnit)}
-              />
-              <StatusMetric
-                icon={Droplets}
-                label="습도"
-                value={formatNumber(status?.humidity)}
-                unit="%"
-              />
             </div>
           </div>
         </section>
@@ -744,35 +728,6 @@ function ScheduleRow({
   );
 }
 
-function StatusMetric({
-  icon: Icon,
-  label,
-  value,
-  unit,
-  compact = false,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  unit: string;
-  compact?: boolean;
-}) {
-  return (
-    <div className="min-w-0">
-      <Icon className="h-5 w-5 text-sky-700" />
-      <p className="mt-3 text-sm font-semibold text-slate-500">{label}</p>
-      <p
-        className={`mt-1 font-bold tracking-normal text-slate-950 ${
-          compact ? "text-lg" : "text-2xl"
-        }`}
-      >
-        {value}
-        {unit ? <span className="ml-1 text-base text-slate-500">{unit}</span> : null}
-      </p>
-    </div>
-  );
-}
-
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), CLIENT_REQUEST_TIMEOUT_MS);
@@ -811,10 +766,6 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 function toErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
-}
-
-function formatNumber(value: number | null | undefined) {
-  return typeof value === "number" ? String(value) : "--";
 }
 
 function buildOptimisticStatusPatch(
