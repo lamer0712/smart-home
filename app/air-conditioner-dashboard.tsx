@@ -619,14 +619,14 @@ function ScheduleForm({
           예약 시간에 전원을 끕니다.
         </p>
       )}
-      <div className="mt-3">
+      <div className="mt-3 min-w-0 overflow-hidden rounded-md">
         <input
           id={`schedule-${power}`}
           type="datetime-local"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
-          className="h-11 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="block h-11 w-full max-w-full min-w-0 appearance-none rounded-md border border-slate-300 bg-white px-3 text-base font-semibold text-slate-900 shadow-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
         />
       </div>
       {power === "on" && temperatureRange && typeof temperature === "number" && onTemperatureChange ? (
