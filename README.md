@@ -153,6 +153,20 @@ APP_PASSWORD=change_this_dashboard_password
 { "temperature": 24 }
 ```
 
+### `POST /api/ac/climate`
+
+냉방 온도 적용:
+
+```json
+{ "mode": "cool", "temperature": 24 }
+```
+
+송풍 전환:
+
+```json
+{ "mode": "wind" }
+```
+
 ### `POST /api/ac/mode`
 
 ```json

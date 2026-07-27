@@ -81,11 +81,6 @@ const MODE_LABELS: Record<string, string> = {
   wind: "송풍",
 };
 
-const MODE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  cool: Snowflake,
-  wind: Wind,
-};
-
 const FAN_MODE_LABELS: Record<string, string> = {
   auto: "자동",
   medium: "중간",
@@ -116,12 +111,16 @@ export function AirConditionerDashboard() {
       setStatus(payload.status);
       if (payload.controls) setControls(payload.controls);
 
-      if (
-        !hasSyncedTemperature.current &&
-        typeof payload.status.coolingSetpoint === "number"
-      ) {
-        setTargetTemperature(payload.status.coolingSetpoint);
-        setScheduleOnTemperature(payload.status.coolingSetpoint);
+      if (!hasSyncedTemperature.current) {
+        const temperatureRange = payload.controls?.temperature ?? FALLBACK_CONTROLS.temperature;
+        if (payload.status.mode === "wind") {
+          setTargetTemperature(getWindSliderValue(temperatureRange));
+        } else if (typeof payload.status.coolingSetpoint === "number") {
+          setTargetTemperature(payload.status.coolingSetpoint);
+        }
+        if (typeof payload.status.coolingSetpoint === "number") {
+          setScheduleOnTemperature(payload.status.coolingSetpoint);
+        }
         hasSyncedTemperature.current = true;
       }
     } catch (requestError) {
@@ -157,6 +156,9 @@ export function AirConditionerDashboard() {
   }, [fetchSchedules, fetchStatus]);
 
   const powerOn = status?.power === "on";
+  const windSliderValue = getWindSliderValue(controls.temperature);
+  const targetIsWind = isWindSliderValue(targetTemperature, controls.temperature);
+  const targetClimateLabel = targetIsWind ? "송풍" : `${targetTemperature}℃`;
   const updatedAt = useMemo(() => {
     if (!status?.updatedAt) return "아직 동기화 전";
     return new Intl.DateTimeFormat("ko-KR", {
@@ -183,7 +185,9 @@ export function AirConditionerDashboard() {
         body: JSON.stringify(body),
       });
       setStatus(payload.status);
-      if (typeof payload.status.coolingSetpoint === "number") {
+      if (payload.status.mode === "wind") {
+        setTargetTemperature(getWindSliderValue(controls.temperature));
+      } else if (typeof payload.status.coolingSetpoint === "number") {
         setTargetTemperature(payload.status.coolingSetpoint);
       }
     } catch (requestError) {
@@ -226,6 +230,18 @@ export function AirConditionerDashboard() {
     } finally {
       setPendingAction(null);
     }
+  }
+
+  async function applyClimateSelection() {
+    if (targetIsWind) {
+      await submitCommand("climate", "/api/ac/climate", { mode: "wind" });
+      return;
+    }
+
+    await submitCommand("climate", "/api/ac/climate", {
+      mode: "cool",
+      temperature: targetTemperature,
+    });
   }
 
   async function cancelSchedule(id: string) {
@@ -298,12 +314,8 @@ export function AirConditionerDashboard() {
                     {powerOn ? "ON" : status?.power === "off" ? "OFF" : "--"}
                   </p>
                 </div>
-                <div
-                  className={`flex h-14 w-14 items-center justify-center rounded-full ${
-                    powerOn ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500"
-                  }`}
-                >
-                  <Power className="h-7 w-7" />
+                <div className="shrink-0 pt-1 text-right text-xs font-semibold text-slate-500">
+                  <span className="block whitespace-nowrap">동기화 {updatedAt}</span>
                 </div>
               </div>
 
@@ -342,7 +354,7 @@ export function AirConditionerDashboard() {
                 icon={Thermometer}
                 label="실내 온도"
                 value={formatNumber(status?.roomTemperature)}
-                unit={status?.roomTemperatureUnit ?? "C"}
+                unit={formatTemperatureUnit(status?.roomTemperatureUnit)}
               />
               <StatusMetric
                 icon={Droplets}
@@ -354,7 +366,7 @@ export function AirConditionerDashboard() {
                 icon={Snowflake}
                 label="희망 온도"
                 value={formatNumber(status?.coolingSetpoint)}
-                unit={status?.coolingSetpointUnit ?? "C"}
+                unit={formatTemperatureUnit(status?.coolingSetpointUnit)}
               />
               <StatusMetric
                 icon={Fan}
@@ -362,59 +374,11 @@ export function AirConditionerDashboard() {
                 value={status?.fanMode ? (FAN_MODE_LABELS[status.fanMode] ?? status.fanMode) : "--"}
                 unit=""
               />
-              <StatusMetric
-                icon={RefreshCw}
-                label="동기화"
-                value={updatedAt}
-                unit=""
-                compact
-              />
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-500">운전 모드</p>
-                <h2 className="mt-1 text-xl font-bold text-slate-950">
-                  {status?.mode ? (MODE_LABELS[status.mode] ?? status.mode) : "--"}
-                </h2>
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {controls.modes.map((mode) => {
-                const Icon = MODE_ICONS[mode] ?? Wind;
-                const selected = status?.mode === mode;
-                const action = `mode-${mode}`;
-
-                return (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => submitCommand(action, "/api/ac/mode", { mode })}
-                    disabled={pendingAction !== null}
-                    className={`inline-flex h-12 items-center justify-center gap-2 rounded-md border px-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                      selected
-                        ? "border-sky-600 bg-sky-50 text-sky-800"
-                        : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-                    }`}
-                    aria-pressed={selected}
-                  >
-                    {pendingAction === action ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Icon className="h-4 w-4" />
-                    )}
-                    {MODE_LABELS[mode] ?? mode}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
+        <section className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -461,20 +425,26 @@ export function AirConditionerDashboard() {
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-500">희망 온도 설정</p>
+                <p className="text-sm font-semibold text-slate-500">냉방 / 송풍 설정</p>
                 <h2 className="mt-1 text-4xl font-bold text-slate-950">
-                  {targetTemperature}
-                  <span className="text-2xl text-slate-500"> C</span>
+                  {targetClimateLabel}
                 </h2>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  현재 {status?.mode ? (MODE_LABELS[status.mode] ?? status.mode) : "--"}
+                </p>
               </div>
-              <Thermometer className="h-8 w-8 text-sky-700" />
+              {targetIsWind ? (
+                <Wind className="h-8 w-8 text-sky-700" />
+              ) : (
+                <Thermometer className="h-8 w-8 text-sky-700" />
+              )}
             </div>
 
             <div className="mt-6">
               <input
                 type="range"
                 min={controls.temperature.min}
-                max={controls.temperature.max}
+                max={windSliderValue}
                 step={controls.temperature.step}
                 value={targetTemperature}
                 onChange={(event) => setTargetTemperature(Number(event.target.value))}
@@ -483,27 +453,26 @@ export function AirConditionerDashboard() {
                 aria-label="희망 온도"
               />
               <div className="mt-2 flex justify-between text-xs font-semibold text-slate-500">
-                <span>{controls.temperature.min} C</span>
-                <span>{controls.temperature.max} C</span>
+                <span>{controls.temperature.min}℃</span>
+                <span>{controls.temperature.max}℃</span>
+                <span>송풍</span>
               </div>
             </div>
 
             <button
               type="button"
-              onClick={() =>
-                submitCommand("temperature", "/api/ac/temperature", {
-                  temperature: targetTemperature,
-                })
-              }
+              onClick={applyClimateSelection}
               disabled={pendingAction !== null}
               className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {pendingAction === "temperature" ? (
+              {pendingAction === "climate" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : targetIsWind ? (
+                <Wind className="h-4 w-4" />
               ) : (
                 <Thermometer className="h-4 w-4" />
               )}
-              온도 적용
+              {targetIsWind ? "송풍 적용" : "냉방 적용"}
             </button>
           </div>
         </section>
@@ -670,7 +639,7 @@ function ScheduleForm({
         <div className="mt-4">
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm font-bold text-slate-800">희망 온도</span>
-            <span className="text-lg font-bold text-slate-950">{temperature} C</span>
+            <span className="text-lg font-bold text-slate-950">{temperature}℃</span>
           </div>
           <input
             type="range"
@@ -684,9 +653,9 @@ function ScheduleForm({
             aria-label="켜짐 예약 희망 온도"
           />
           <div className="mt-2 flex justify-between text-xs font-semibold text-slate-500">
-            <span>{temperatureRange.min} C</span>
+            <span>{temperatureRange.min}℃</span>
             <span>냉방 고정</span>
-            <span>{temperatureRange.max} C</span>
+            <span>{temperatureRange.max}℃</span>
           </div>
         </div>
       ) : null}
@@ -803,6 +772,18 @@ function formatNumber(value: number | null | undefined) {
   return typeof value === "number" ? String(value) : "--";
 }
 
+function formatTemperatureUnit(unit: string | null | undefined) {
+  return unit === "C" || !unit ? "℃" : unit;
+}
+
+function getWindSliderValue(temperatureRange: Controls["temperature"]) {
+  return temperatureRange.max + temperatureRange.step;
+}
+
+function isWindSliderValue(value: number, temperatureRange: Controls["temperature"]) {
+  return value > temperatureRange.max;
+}
+
 function toDatetimeLocal(offsetMinutes: number) {
   const date = new Date(Date.now() + offsetMinutes * 60_000);
   date.setSeconds(0, 0);
@@ -847,6 +828,6 @@ function formatScheduleSummary(schedule: PowerSchedule) {
   if (schedule.mode !== "cool") return "전원 켜기";
 
   const temperature =
-    typeof schedule.coolingSetpoint === "number" ? `${schedule.coolingSetpoint} C` : "온도 미확인";
+    typeof schedule.coolingSetpoint === "number" ? `${schedule.coolingSetpoint}℃` : "온도 미확인";
   return `냉방 · ${temperature}`;
 }
