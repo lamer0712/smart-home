@@ -423,7 +423,7 @@ export function AirConditionerDashboard() {
                   ) : (
                     <Power className="h-4 w-4" />
                   )}
-                송풍 후 끄기
+                끄기
                 </button>
               </div>
             </div>
@@ -636,7 +636,7 @@ function ScheduleForm({
         </p>
       ) : (
         <p className="mt-1 text-xs font-semibold text-slate-500">
-          예약 시간부터 송풍으로 1시간 운전한 뒤 전원을 끕니다.
+          예약 시간에 전원을 끕니다.
         </p>
       )}
       <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
@@ -777,8 +777,8 @@ function buildOptimisticStatusPatch(
     patch.power = "on";
   }
 
-  if (body.power === "off" && currentStatus.power === "on") {
-    patch.mode = "wind";
+  if (body.power === "off") {
+    patch.power = "off";
   }
 
   if (typeof body.fanMode === "string") {

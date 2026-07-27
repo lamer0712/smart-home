@@ -1,5 +1,4 @@
-import { startWindDownNow } from "@/lib/scheduler";
-import { getAirConditionerStatus, setPower, validatePower } from "@/lib/smartthings";
+import { setPower, validatePower } from "@/lib/smartthings";
 import { errorResponse, jsonResponse, statusAfterCommand } from "../_response";
 
 export const dynamic = "force-dynamic";
@@ -9,17 +8,6 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { power?: unknown };
     const power = validatePower(body.power);
-
-    if (power === "off") {
-      const currentStatus = await getAirConditionerStatus();
-      if (currentStatus.power === "off") {
-        return jsonResponse({ status: currentStatus });
-      }
-
-      const schedule = await startWindDownNow();
-      const status = await statusAfterCommand();
-      return jsonResponse({ status, schedule });
-    }
 
     await setPower(power);
     const status = await statusAfterCommand();

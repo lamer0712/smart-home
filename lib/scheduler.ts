@@ -4,7 +4,6 @@ import {
   SmartThingsApiError,
   getSmartThingsConfig,
   getTemperatureRange,
-  setAirConditionerMode,
   smartThingsFetch,
   validatePower,
   validateTemperature,
@@ -94,7 +93,6 @@ type RulesResponse = {
 const RULE_NAME_PREFIX = "SmartThings AC Reservation";
 const WIND_DOWN_RULE_MARKER = "WIND_DOWN";
 const WIND_DOWN_TIMER_RULE_MARKER = `${WIND_DOWN_RULE_MARKER}_OFF`;
-const WIND_DOWN_DURATION_HOURS = 1;
 
 export async function ensureSchedulerStarted() {
   return;
@@ -150,12 +148,6 @@ export async function createPowerSchedule(
   return schedule;
 }
 
-export async function startWindDownNow() {
-  await setAirConditionerMode("wind");
-
-  return createFinalOffSchedule(new Date(Date.now() + WIND_DOWN_DURATION_HOURS * 60 * 60_000));
-}
-
 export async function cancelPowerSchedule(id: string) {
   const config = getSmartThingsConfig();
   const locationId = await getLocationId();
@@ -173,65 +165,6 @@ export async function cancelPowerSchedule(id: string) {
     },
     config,
   );
-
-  return schedule;
-}
-
-async function createFinalOffSchedule(runAt: Date) {
-  const config = getSmartThingsConfig();
-  const locationId = await getLocationId();
-  const timeZoneId = getTimeZoneId();
-  const dateTime = getDateTimeParts(runAt, timeZoneId);
-  const body = {
-    name: `${RULE_NAME_PREFIX} ${WIND_DOWN_RULE_MARKER}_OFF ${runAt.toISOString()}`,
-    timeZoneId,
-    actions: [
-      {
-        every: {
-          specific: {
-            locationId,
-            timeZoneId,
-            year: dateTime.year,
-            month: dateTime.month,
-            day: dateTime.day,
-            reference: "Midnight",
-            offset: {
-              value: {
-                integer: dateTime.hour * 60 + dateTime.minute,
-              },
-              unit: "Minute",
-            },
-          },
-          actions: [
-            createCommandAction(config.deviceId, [
-              {
-                component: config.component,
-                capability: "switch",
-                command: "off",
-              },
-            ]),
-          ],
-        },
-      },
-    ],
-  };
-
-  const rule = await smartThingsFetch<Rule>(
-    `/rules?locationId=${encodeURIComponent(locationId)}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    },
-    config,
-  );
-  const schedule = ruleToSchedule(rule);
-
-  if (!schedule) {
-    throw new SmartThingsApiError("SmartThings wind-down Rule was created but could not be parsed.", 502);
-  }
 
   return schedule;
 }
@@ -330,40 +263,10 @@ function createRuleRequest(
         },
       ]),
     ];
-  } else {
-    everyActions = [
-      createCommandAction(deviceId, [
-        {
-          component,
-          capability: modeCapability,
-          command: process.env.SMARTTHINGS_MODE_COMMAND ?? "setAirConditionerMode",
-          arguments: [{ string: "wind" }],
-        },
-      ]),
-      {
-        sleep: {
-          duration: {
-            value: {
-              integer: WIND_DOWN_DURATION_HOURS,
-            },
-            unit: "Hour",
-          },
-        },
-      },
-      createCommandAction(deviceId, [
-        {
-          component,
-          capability: "switch",
-          command: "off",
-        },
-      ]),
-    ];
   }
 
   return {
-    name: `${RULE_NAME_PREFIX} ${
-      power === "off" ? WIND_DOWN_RULE_MARKER : power.toUpperCase()
-    } ${runAt.toISOString()}`,
+    name: `${RULE_NAME_PREFIX} ${power.toUpperCase()} ${runAt.toISOString()}`,
     timeZoneId,
     actions: [
       {
