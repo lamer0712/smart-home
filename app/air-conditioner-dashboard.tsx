@@ -8,7 +8,6 @@ import {
   Loader2,
   Power,
   RefreshCw,
-  Snowflake,
   Thermometer,
   Trash2,
   Wind,
@@ -159,6 +158,13 @@ export function AirConditionerDashboard() {
   const windSliderValue = getWindSliderValue(controls.temperature);
   const targetIsWind = isWindSliderValue(targetTemperature, controls.temperature);
   const targetClimateLabel = targetIsWind ? "송풍" : `${targetTemperature}℃`;
+  const currentClimateIsWind = status?.mode === "wind";
+  const currentClimateLabel = currentClimateIsWind
+    ? "송풍"
+    : typeof status?.coolingSetpoint === "number"
+      ? `${status.coolingSetpoint}℃`
+      : "--";
+  const currentModeLabel = status?.mode ? (MODE_LABELS[status.mode] ?? status.mode) : "--";
   const currentFanMode = status?.fanMode ?? null;
   const currentFanModeLabel = currentFanMode
     ? (FAN_MODE_LABELS[currentFanMode] ?? currentFanMode)
@@ -353,7 +359,7 @@ export function AirConditionerDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-5 border-t border-slate-200 pt-5 sm:grid-cols-3 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-5 border-t border-slate-200 pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
               <StatusMetric
                 icon={Thermometer}
                 label="실내 온도"
@@ -365,12 +371,6 @@ export function AirConditionerDashboard() {
                 label="습도"
                 value={formatNumber(status?.humidity)}
                 unit="%"
-              />
-              <StatusMetric
-                icon={Snowflake}
-                label="희망 온도"
-                value={formatNumber(status?.coolingSetpoint)}
-                unit={formatTemperatureUnit(status?.coolingSetpointUnit)}
               />
             </div>
           </div>
@@ -421,15 +421,15 @@ export function AirConditionerDashboard() {
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-500">냉방 / 송풍 설정</p>
+                <p className="text-sm font-semibold text-slate-500">현재 냉방 / 송풍</p>
                 <h2 className="mt-1 text-4xl font-bold text-slate-950">
-                  {targetClimateLabel}
+                  {currentClimateLabel}
                 </h2>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
-                  현재 {status?.mode ? (MODE_LABELS[status.mode] ?? status.mode) : "--"}
+                  현재 {currentModeLabel}
                 </p>
               </div>
-              {targetIsWind ? (
+              {currentClimateIsWind ? (
                 <Wind className="h-8 w-8 text-sky-700" />
               ) : (
                 <Thermometer className="h-8 w-8 text-sky-700" />
@@ -437,6 +437,10 @@ export function AirConditionerDashboard() {
             </div>
 
             <div className="mt-6">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="text-sm font-bold text-slate-800">선택</span>
+                <span className="text-lg font-bold text-slate-950">{targetClimateLabel}</span>
+              </div>
               <input
                 type="range"
                 min={controls.temperature.min}
