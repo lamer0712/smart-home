@@ -371,7 +371,7 @@ export function AirConditionerDashboard() {
             <div>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-slate-500">현재 상태</p>
+                  <p className="text-sm font-semibold text-slate-500">상태</p>
                   <p className="mt-2 text-5xl font-bold tracking-normal text-slate-950">
                     {powerOn ? "ON" : status?.power === "off" ? "OFF" : "--"}
                   </p>
@@ -435,7 +435,7 @@ export function AirConditionerDashboard() {
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-500">현재 바람세기</p>
+                <p className="text-sm font-semibold text-slate-500">바람세기</p>
                 <h2 className="mt-1 text-xl font-bold text-slate-950">
                   {currentFanModeLabel}
                 </h2>
@@ -476,12 +476,12 @@ export function AirConditionerDashboard() {
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-500">현재 냉방 / 송풍</p>
+                <p className="text-sm font-semibold text-slate-500">냉방 / 송풍</p>
                 <h2 className="mt-1 text-4xl font-bold text-slate-950">
                   {currentClimateLabel}
                 </h2>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
-                  현재 {currentModeLabel}
+                  {currentModeLabel}
                 </p>
               </div>
               {currentClimateIsWind ? (
