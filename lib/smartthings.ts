@@ -2,10 +2,12 @@ import "server-only";
 
 export type PowerState = "on" | "off";
 export type AirConditionerMode = "cool" | "wind";
+export type AirConditionerFanMode = "auto" | "medium" | "high" | "turbo";
 
 export type AirConditionerStatus = {
   power: PowerState | null;
   mode: string | null;
+  fanMode: string | null;
   coolingSetpoint: number | null;
   coolingSetpointUnit: string | null;
   roomTemperature: number | null;
@@ -34,6 +36,7 @@ type DeviceCommand = {
 const DEFAULT_BASE_URL = "https://api.smartthings.com/v1";
 const DEFAULT_COMPONENT = "main";
 const DEFAULT_MODES: AirConditionerMode[] = ["cool", "wind"];
+const DEFAULT_FAN_MODES: AirConditionerFanMode[] = ["auto", "medium", "high", "turbo"];
 
 export class SmartThingsConfigError extends Error {
   constructor(message: string) {
@@ -70,6 +73,16 @@ export function getAllowedModes() {
     .filter(Boolean);
 }
 
+export function getAllowedFanModes() {
+  const rawModes = process.env.SMARTTHINGS_ALLOWED_FAN_MODES;
+  if (!rawModes) return DEFAULT_FAN_MODES;
+
+  return rawModes
+    .split(",")
+    .map((mode) => mode.trim())
+    .filter(Boolean);
+}
+
 export function validateMode(mode: unknown): string {
   if (typeof mode !== "string" || mode.trim().length === 0) {
     throw new SmartThingsApiError("mode must be a non-empty string.", 400);
@@ -80,6 +93,23 @@ export function validateMode(mode: unknown): string {
   if (!allowedModes.includes(normalizedMode)) {
     throw new SmartThingsApiError(
       `Unsupported mode "${normalizedMode}". Allowed modes: ${allowedModes.join(", ")}.`,
+      400,
+    );
+  }
+
+  return normalizedMode;
+}
+
+export function validateFanMode(fanMode: unknown): string {
+  if (typeof fanMode !== "string" || fanMode.trim().length === 0) {
+    throw new SmartThingsApiError("fanMode must be a non-empty string.", 400);
+  }
+
+  const normalizedMode = fanMode.trim();
+  const allowedModes = getAllowedFanModes();
+  if (!allowedModes.includes(normalizedMode)) {
+    throw new SmartThingsApiError(
+      `Unsupported fanMode "${normalizedMode}". Allowed fan modes: ${allowedModes.join(", ")}.`,
       400,
     );
   }
@@ -138,12 +168,17 @@ export async function getAirConditionerStatus(): Promise<AirConditionerStatus> {
     component.airConditionerMode?.airConditionerMode ??
       component[config.modeCapability]?.[config.modeAttribute],
   );
+  const fanMode = readString(
+    component.airConditionerFanMode?.fanMode ??
+      component[config.fanModeCapability]?.[config.fanModeAttribute],
+  );
   const roomTemperature = readNumberState(component.temperatureMeasurement?.temperature);
   const humidity = readNumberState(component.relativeHumidityMeasurement?.humidity);
 
   return {
     power: power === "on" || power === "off" ? power : null,
     mode,
+    fanMode,
     coolingSetpoint,
     coolingSetpointUnit: readUnit(
       component.thermostatCoolingSetpoint?.coolingSetpoint ??
@@ -178,6 +213,15 @@ export async function setAirConditionerMode(mode: string) {
     capability: config.modeCapability,
     command: process.env.SMARTTHINGS_MODE_COMMAND ?? "setAirConditionerMode",
     arguments: [mode],
+  });
+}
+
+export async function setAirConditionerFanMode(fanMode: string) {
+  const config = getSmartThingsConfig();
+  await executeCommand({
+    capability: config.fanModeCapability,
+    command: process.env.SMARTTHINGS_FAN_MODE_COMMAND ?? "setFanMode",
+    arguments: [fanMode],
   });
 }
 
@@ -224,6 +268,8 @@ export function getSmartThingsConfig() {
     component: process.env.SMARTTHINGS_COMPONENT ?? DEFAULT_COMPONENT,
     modeCapability: process.env.SMARTTHINGS_MODE_CAPABILITY ?? "airConditionerMode",
     modeAttribute: process.env.SMARTTHINGS_MODE_ATTRIBUTE ?? "airConditionerMode",
+    fanModeCapability: process.env.SMARTTHINGS_FAN_MODE_CAPABILITY ?? "airConditionerFanMode",
+    fanModeAttribute: process.env.SMARTTHINGS_FAN_MODE_ATTRIBUTE ?? "fanMode",
     temperatureCapability:
       process.env.SMARTTHINGS_TEMPERATURE_CAPABILITY ?? "thermostatCoolingSetpoint",
     temperatureAttribute: process.env.SMARTTHINGS_TEMPERATURE_ATTRIBUTE ?? "coolingSetpoint",

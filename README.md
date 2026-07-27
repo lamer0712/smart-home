@@ -8,6 +8,7 @@ Samsung SmartThings API로 에어컨을 제어하는 개인용 Next.js 대시보
 - 켜짐/꺼짐 예약
 - 희망 온도 설정
 - 운전 모드 변경
+- 바람세기 변경
 - 현재 상태 조회
 - 상태 변경 시 로딩 및 오류 표시
 - 30초마다 자동 상태 갱신
@@ -53,9 +54,13 @@ SMARTTHINGS_TEMPERATURE_MIN=16
 SMARTTHINGS_TEMPERATURE_MAX=30
 SMARTTHINGS_TEMPERATURE_STEP=1
 SMARTTHINGS_ALLOWED_MODES=cool,wind
+SMARTTHINGS_ALLOWED_FAN_MODES=auto,medium,high,turbo
 SMARTTHINGS_MODE_CAPABILITY=airConditionerMode
 SMARTTHINGS_MODE_ATTRIBUTE=airConditionerMode
 SMARTTHINGS_MODE_COMMAND=setAirConditionerMode
+SMARTTHINGS_FAN_MODE_CAPABILITY=airConditionerFanMode
+SMARTTHINGS_FAN_MODE_ATTRIBUTE=fanMode
+SMARTTHINGS_FAN_MODE_COMMAND=setFanMode
 SMARTTHINGS_TEMPERATURE_CAPABILITY=thermostatCoolingSetpoint
 SMARTTHINGS_TEMPERATURE_ATTRIBUTE=coolingSetpoint
 SMARTTHINGS_TEMPERATURE_COMMAND=setCoolingSetpoint
@@ -153,6 +158,14 @@ APP_PASSWORD=change_this_dashboard_password
 ```json
 { "mode": "cool" }
 ```
+
+### `POST /api/ac/fan-mode`
+
+```json
+{ "fanMode": "auto" }
+```
+
+기본 지원값은 `auto`, `medium`, `high`, `turbo`입니다. 모델에 따라 다르면 `SMARTTHINGS_ALLOWED_FAN_MODES`를 수정하세요.
 
 ### `GET /api/ac/schedules`
 

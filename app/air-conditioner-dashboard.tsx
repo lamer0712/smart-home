@@ -4,6 +4,7 @@ import {
   AlertCircle,
   CalendarClock,
   Droplets,
+  Fan,
   Loader2,
   Power,
   RefreshCw,
@@ -19,6 +20,7 @@ type PowerState = "on" | "off";
 type AcStatus = {
   power: PowerState | null;
   mode: string | null;
+  fanMode: string | null;
   coolingSetpoint: number | null;
   coolingSetpointUnit: string | null;
   roomTemperature: number | null;
@@ -34,6 +36,7 @@ type Controls = {
     step: number;
   };
   modes: string[];
+  fanModes: string[];
 };
 
 type StatusPayload = {
@@ -70,6 +73,7 @@ const FALLBACK_CONTROLS: Controls = {
     step: 1,
   },
   modes: ["cool", "wind"],
+  fanModes: ["auto", "medium", "high", "turbo"],
 };
 
 const MODE_LABELS: Record<string, string> = {
@@ -80,6 +84,13 @@ const MODE_LABELS: Record<string, string> = {
 const MODE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   cool: Snowflake,
   wind: Wind,
+};
+
+const FAN_MODE_LABELS: Record<string, string> = {
+  auto: "자동",
+  medium: "중간",
+  high: "강함",
+  turbo: "터보",
 };
 
 const CLIENT_REQUEST_TIMEOUT_MS = 12_000;
@@ -346,6 +357,12 @@ export function AirConditionerDashboard() {
                 unit={status?.coolingSetpointUnit ?? "C"}
               />
               <StatusMetric
+                icon={Fan}
+                label="바람세기"
+                value={status?.fanMode ? (FAN_MODE_LABELS[status.fanMode] ?? status.fanMode) : "--"}
+                unit=""
+              />
+              <StatusMetric
                 icon={RefreshCw}
                 label="동기화"
                 value={updatedAt}
@@ -356,7 +373,7 @@ export function AirConditionerDashboard() {
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <section className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -392,6 +409,49 @@ export function AirConditionerDashboard() {
                       <Icon className="h-4 w-4" />
                     )}
                     {MODE_LABELS[mode] ?? mode}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-500">바람세기</p>
+                <h2 className="mt-1 text-xl font-bold text-slate-950">
+                  {status?.fanMode
+                    ? (FAN_MODE_LABELS[status.fanMode] ?? status.fanMode)
+                    : "--"}
+                </h2>
+              </div>
+              <Fan className="h-7 w-7 text-sky-700" />
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              {controls.fanModes.map((fanMode) => {
+                const selected = status?.fanMode === fanMode;
+                const action = `fan-${fanMode}`;
+
+                return (
+                  <button
+                    key={fanMode}
+                    type="button"
+                    onClick={() => submitCommand(action, "/api/ac/fan-mode", { fanMode })}
+                    disabled={pendingAction !== null}
+                    className={`inline-flex h-12 items-center justify-center gap-2 rounded-md border px-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                      selected
+                        ? "border-sky-600 bg-sky-50 text-sky-800"
+                        : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
+                    }`}
+                    aria-pressed={selected}
+                  >
+                    {pendingAction === action ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Fan className="h-4 w-4" />
+                    )}
+                    {FAN_MODE_LABELS[fanMode] ?? fanMode}
                   </button>
                 );
               })}
