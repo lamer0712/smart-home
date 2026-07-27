@@ -80,11 +80,6 @@ const FALLBACK_CONTROLS: Controls = {
   fanModes: ["auto", "medium", "high", "turbo"],
 };
 
-const MODE_LABELS: Record<string, string> = {
-  cool: "냉방",
-  wind: "송풍",
-};
-
 const FAN_MODE_LABELS: Record<string, string> = {
   auto: "자동",
   medium: "중간",
@@ -171,12 +166,10 @@ export function AirConditionerDashboard() {
   const targetIsWind = isWindSliderValue(targetTemperature, controls.temperature);
   const targetClimateLabel = targetIsWind ? "송풍" : `${targetTemperature}℃`;
   const currentClimateIsWind = status?.mode === "wind";
-  const currentClimateLabel = currentClimateIsWind
-    ? "송풍"
-    : typeof status?.coolingSetpoint === "number"
-      ? `${status.coolingSetpoint}℃`
+  const roomTemperatureLabel =
+    typeof status?.roomTemperature === "number"
+      ? `${status.roomTemperature}${formatTemperatureUnit(status.roomTemperatureUnit)}`
       : "--";
-  const currentModeLabel = status?.mode ? (MODE_LABELS[status.mode] ?? status.mode) : "--";
   const currentFanMode = status?.fanMode ?? null;
   const currentFanModeLabel = currentFanMode
     ? (FAN_MODE_LABELS[currentFanMode] ?? currentFanMode)
@@ -478,11 +471,8 @@ export function AirConditionerDashboard() {
               <div>
                 <p className="text-sm font-semibold text-slate-500">냉방 / 송풍</p>
                 <h2 className="mt-1 text-4xl font-bold text-slate-950">
-                  {currentClimateLabel}
+                  {roomTemperatureLabel}
                 </h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">
-                  {currentModeLabel}
-                </p>
               </div>
               {currentClimateIsWind ? (
                 <Wind className="h-8 w-8 text-sky-700" />
@@ -493,7 +483,7 @@ export function AirConditionerDashboard() {
 
             <div className="mt-6">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <span className="text-sm font-bold text-slate-800">선택</span>
+                <span className="text-sm font-bold text-slate-800">희망온도</span>
                 <span className="text-lg font-bold text-slate-950">{targetClimateLabel}</span>
               </div>
               <input
