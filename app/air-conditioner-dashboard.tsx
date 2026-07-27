@@ -619,28 +619,15 @@ function ScheduleForm({
           예약 시간에 전원을 끕니다.
         </p>
       )}
-      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
+      <div className="mt-3">
         <input
           id={`schedule-${power}`}
           type="datetime-local"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
-          className="h-11 min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-11 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 shadow-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
         />
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={disabled}
-          className={`inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-            power === "on"
-              ? "bg-sky-600 text-white hover:bg-sky-700"
-              : "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-          }`}
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
-          예약
-        </button>
       </div>
       {power === "on" && temperatureRange && typeof temperature === "number" && onTemperatureChange ? (
         <div className="mt-4">
@@ -666,6 +653,19 @@ function ScheduleForm({
           </div>
         </div>
       ) : null}
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={disabled}
+        className={`mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+          power === "on"
+            ? "bg-sky-600 text-white hover:bg-sky-700"
+            : "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
+        }`}
+      >
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
+        예약
+      </button>
     </div>
   );
 }
