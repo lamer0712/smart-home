@@ -3,7 +3,6 @@
 import {
   AlertCircle,
   CalendarClock,
-  Fan,
   Loader2,
   Power,
   RefreshCw,
@@ -92,6 +91,7 @@ export function AirConditionerDashboard() {
   const [status, setStatus] = useState<AcStatus | null>(null);
   const [controls, setControls] = useState<Controls>(FALLBACK_CONTROLS);
   const [targetTemperature, setTargetTemperature] = useState(24);
+  const [targetFanMode, setTargetFanMode] = useState(FALLBACK_CONTROLS.fanModes[0]);
   const [scheduleOnTemperature, setScheduleOnTemperature] = useState(24);
   const [scheduleOnAt, setScheduleOnAt] = useState(() => toDatetimeLocal(30));
   const [scheduleOffAt, setScheduleOffAt] = useState(() => toDatetimeLocal(60));
@@ -100,7 +100,9 @@ export function AirConditionerDashboard() {
   const [pendingAction, setPendingAction] = useState<string | null>("status");
   const [awaitingDeviceSync, setAwaitingDeviceSync] = useState(false);
   const hasSyncedTemperature = useRef(false);
+  const hasSyncedFanMode = useRef(false);
   const delayedRefreshTimers = useRef<number[]>([]);
+  const climateCommandTimer = useRef<number | null>(null);
   const pendingDesiredStatus = useRef<PendingDesiredStatus | null>(null);
 
   const fetchStatus = useCallback(async ({ silent = false } = {}) => {
@@ -124,6 +126,11 @@ export function AirConditionerDashboard() {
           setScheduleOnTemperature(nextStatus.coolingSetpoint);
         }
         hasSyncedTemperature.current = true;
+      }
+
+      if (!hasSyncedFanMode.current && nextStatus.fanMode) {
+        setTargetFanMode(nextStatus.fanMode);
+        hasSyncedFanMode.current = true;
       }
     } catch (requestError) {
       setError(toErrorMessage(requestError));
@@ -157,6 +164,7 @@ export function AirConditionerDashboard() {
     return () => {
       window.clearInterval(interval);
       delayedRefreshTimers.current.forEach((timer) => window.clearTimeout(timer));
+      if (climateCommandTimer.current) window.clearTimeout(climateCommandTimer.current);
     };
   }, [fetchSchedules, fetchStatus]);
 
@@ -169,10 +177,8 @@ export function AirConditionerDashboard() {
     typeof status?.roomTemperature === "number"
       ? `${status.roomTemperature}${formatTemperatureUnit(status.roomTemperatureUnit)}`
       : "--";
-  const currentFanMode = status?.fanMode ?? null;
-  const currentFanModeLabel = currentFanMode
-    ? (FAN_MODE_LABELS[currentFanMode] ?? currentFanMode)
-    : "--";
+  const targetFanModeIndex = Math.max(0, controls.fanModes.indexOf(targetFanMode));
+  const targetFanModeLabel = FAN_MODE_LABELS[targetFanMode] ?? targetFanMode;
   const updatedAt = useMemo(() => {
     if (!status?.updatedAt) return "아직 동기화 전";
     return new Intl.DateTimeFormat("ko-KR", {
@@ -216,6 +222,9 @@ export function AirConditionerDashboard() {
       } else if (typeof optimisticStatus.coolingSetpoint === "number") {
         setTargetTemperature(optimisticStatus.coolingSetpoint);
       }
+      if (optimisticStatus.fanMode) {
+        setTargetFanMode(optimisticStatus.fanMode);
+      }
     } catch (requestError) {
       setError(toErrorMessage(requestError));
     } finally {
@@ -258,16 +267,28 @@ export function AirConditionerDashboard() {
     }
   }
 
-  async function applyClimateSelection() {
-    if (targetIsWind) {
-      await submitCommand("climate", "/api/ac/climate", { mode: "wind" });
-      return;
+  function changeTargetTemperature(temperature: number) {
+    setTargetTemperature(temperature);
+    queueClimateCommand(temperature, targetFanMode);
+  }
+
+  function changeTargetFanMode(fanMode: string) {
+    setTargetFanMode(fanMode);
+    queueClimateCommand(targetTemperature, fanMode);
+  }
+
+  function queueClimateCommand(temperature: number, fanMode: string) {
+    if (climateCommandTimer.current) {
+      window.clearTimeout(climateCommandTimer.current);
     }
 
-    await submitCommand("climate", "/api/ac/climate", {
-      mode: "cool",
-      temperature: targetTemperature,
-    });
+    climateCommandTimer.current = window.setTimeout(() => {
+      void submitCommand(
+        "climate",
+        "/api/ac/climate",
+        buildClimateCommandBody(temperature, fanMode, controls.temperature),
+      );
+    }, 450);
   }
 
   function queueDelayedStatusRefresh() {
@@ -408,48 +429,7 @@ export function AirConditionerDashboard() {
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-500">바람세기</p>
-                <h2 className="mt-1 text-xl font-bold text-slate-950">
-                  {currentFanModeLabel}
-                </h2>
-              </div>
-              <Fan className="h-7 w-7 text-sky-700" />
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              {controls.fanModes.map((fanMode) => {
-                const selected = currentFanMode === fanMode;
-                const action = `fan-${fanMode}`;
-
-                return (
-                  <button
-                    key={fanMode}
-                    type="button"
-                    onClick={() => submitCommand(action, "/api/ac/fan-mode", { fanMode })}
-                    disabled={pendingAction !== null}
-                    className={`inline-flex h-12 items-center justify-center gap-2 rounded-md border px-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                      selected
-                        ? "border-sky-600 bg-sky-50 text-sky-800"
-                        : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-                    }`}
-                    aria-pressed={selected}
-                  >
-                    {pendingAction === action ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Fan className="h-4 w-4" />
-                    )}
-                    {FAN_MODE_LABELS[fanMode] ?? fanMode}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
+        <section>
           <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -476,7 +456,7 @@ export function AirConditionerDashboard() {
                 max={windSliderValue}
                 step={controls.temperature.step}
                 value={targetTemperature}
-                onChange={(event) => setTargetTemperature(Number(event.target.value))}
+                onChange={(event) => changeTargetTemperature(Number(event.target.value))}
                 disabled={pendingAction !== null}
                 className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label="희망 온도"
@@ -488,21 +468,38 @@ export function AirConditionerDashboard() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={applyClimateSelection}
-              disabled={pendingAction !== null}
-              className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {pendingAction === "climate" ? (
+            <div className="mt-6">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="text-sm font-bold text-slate-800">바람세기</span>
+                <span className="text-lg font-bold text-slate-950">{targetFanModeLabel}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={Math.max(0, controls.fanModes.length - 1)}
+                step={1}
+                value={targetFanModeIndex}
+                onChange={(event) => {
+                  const nextFanMode = controls.fanModes[Number(event.target.value)];
+                  if (nextFanMode) changeTargetFanMode(nextFanMode);
+                }}
+                disabled={pendingAction !== null}
+                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label="바람세기"
+              />
+              <div className="mt-2 flex justify-between text-xs font-semibold text-slate-500">
+                {controls.fanModes.map((fanMode) => (
+                  <span key={fanMode}>{FAN_MODE_LABELS[fanMode] ?? fanMode}</span>
+                ))}
+              </div>
+            </div>
+
+            {pendingAction === "climate" ? (
+              <div className="mt-6 inline-flex h-10 items-center gap-2 text-sm font-bold text-slate-500">
                 <Loader2 className="h-4 w-4 animate-spin" />
-              ) : targetIsWind ? (
-                <Wind className="h-4 w-4" />
-              ) : (
-                <Thermometer className="h-4 w-4" />
-              )}
-              {targetIsWind ? "송풍 적용" : "냉방 적용"}
-            </button>
+                전송 중
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -802,6 +799,25 @@ function buildOptimisticStatusPatch(
   }
 
   return patch;
+}
+
+function buildClimateCommandBody(
+  temperature: number,
+  fanMode: string,
+  temperatureRange: Controls["temperature"],
+) {
+  if (isWindSliderValue(temperature, temperatureRange)) {
+    return {
+      mode: "wind",
+      fanMode,
+    };
+  }
+
+  return {
+    mode: "cool",
+    temperature,
+    fanMode,
+  };
 }
 
 function applyStatusPatch(status: AcStatus, patch: Partial<AcStatus>) {

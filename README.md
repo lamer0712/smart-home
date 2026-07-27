@@ -158,14 +158,16 @@ APP_PASSWORD=change_this_dashboard_password
 냉방 온도 적용:
 
 ```json
-{ "mode": "cool", "temperature": 24 }
+{ "mode": "cool", "temperature": 24, "fanMode": "auto" }
 ```
 
 송풍 전환:
 
 ```json
-{ "mode": "wind" }
+{ "mode": "wind", "fanMode": "medium" }
 ```
+
+`fanMode`는 선택 값이며, 함께 보내면 냉방/송풍 전환과 바람세기를 한 번에 적용합니다.
 
 ### `POST /api/ac/mode`
 
