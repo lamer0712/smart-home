@@ -26,7 +26,15 @@ export async function proxy(request: NextRequest) {
 
 function deny(request: NextRequest, message: string) {
   if (request.nextUrl.pathname.startsWith("/api/")) {
-    return NextResponse.json({ error: message }, { status: 401 });
+    return NextResponse.json(
+      { error: message },
+      {
+        status: 401,
+        headers: {
+          "X-Smart-Home-Auth": "required",
+        },
+      },
+    );
   }
 
   const loginUrl = new URL("/login", request.url);

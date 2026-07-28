@@ -769,7 +769,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 
   const payload = (await response.json().catch(() => ({}))) as { error?: string };
 
-  if (response.status === 401) {
+  if (response.status === 401 && response.headers.get("X-Smart-Home-Auth") === "required") {
     throw new AuthRequiredError();
   }
 

@@ -28,6 +28,16 @@ export function errorResponse(error: unknown) {
   }
 
   if (error instanceof SmartThingsApiError) {
+    if (error.status === 401 || error.status === 403) {
+      return jsonResponse(
+        {
+          error:
+            `SmartThings 인증 오류입니다. Vercel의 SMARTTHINGS_TOKEN 권한과 만료 여부를 확인해 주세요. (${error.message})`,
+        },
+        { status: error.status },
+      );
+    }
+
     return jsonResponse({ error: error.message }, { status: error.status });
   }
 
