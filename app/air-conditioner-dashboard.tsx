@@ -107,15 +107,23 @@ export function AirConditionerDashboard() {
   const fetchStatus = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setPendingAction("status");
     setError(null);
+    if (!silent) {
+      clearClimateCommandTimer();
+      delayedRefreshTimers.current.forEach((timer) => window.clearTimeout(timer));
+      delayedRefreshTimers.current = [];
+      pendingDesiredStatus.current = null;
+      setAwaitingDeviceSync(false);
+    }
 
     try {
       const payload = await requestJson<StatusPayload>("/api/ac/status");
-      const nextStatus = applyPendingDesiredStatus(payload.status);
+      const nextStatus = silent ? applyPendingDesiredStatus(payload.status) : payload.status;
       setStatus(nextStatus);
+      const nextControls = payload.controls ?? controls;
       if (payload.controls) setControls(payload.controls);
 
-      if (!hasSyncedTemperature.current) {
-        const temperatureRange = payload.controls?.temperature ?? FALLBACK_CONTROLS.temperature;
+      if (!hasSyncedTemperature.current || !silent) {
+        const temperatureRange = nextControls.temperature;
         if (nextStatus.mode === "wind") {
           setTargetTemperature(getWindSliderValue(temperatureRange));
         } else if (typeof nextStatus.coolingSetpoint === "number") {
@@ -127,7 +135,7 @@ export function AirConditionerDashboard() {
         hasSyncedTemperature.current = true;
       }
 
-      if (!hasSyncedFanMode.current && nextStatus.fanMode) {
+      if ((!hasSyncedFanMode.current || !silent) && nextStatus.fanMode) {
         setTargetFanMode(nextStatus.fanMode);
         hasSyncedFanMode.current = true;
       }
