@@ -3,6 +3,7 @@ import {
   SmartThingsConfigError,
   getAirConditionerStatus,
 } from "@/lib/smartthings";
+import { SmartThingsOAuthError } from "@/lib/smartthings-oauth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,12 +33,16 @@ export function errorResponse(error: unknown) {
       return jsonResponse(
         {
           error:
-            `SmartThings 인증 오류입니다. Vercel의 SMARTTHINGS_TOKEN 권한과 만료 여부를 확인해 주세요. (${error.message})`,
+            `SmartThings 인증 오류입니다. OAuth 연결 상태 또는 SmartThings 권한을 확인해 주세요. (${error.message})`,
         },
         { status: error.status },
       );
     }
 
+    return jsonResponse({ error: error.message }, { status: error.status });
+  }
+
+  if (error instanceof SmartThingsOAuthError) {
     return jsonResponse({ error: error.message }, { status: error.status });
   }
 

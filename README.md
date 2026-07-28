@@ -1,6 +1,6 @@
 # SmartThings AC Dashboard
 
-Samsung SmartThings API로 에어컨을 제어하는 개인용 Next.js 대시보드입니다. 브라우저는 이 앱의 API Route만 호출하며, `SMARTTHINGS_TOKEN`은 서버 런타임에서만 읽습니다.
+Samsung SmartThings API로 에어컨을 제어하는 개인용 Next.js 대시보드입니다. 브라우저는 이 앱의 API Route만 호출하며, SmartThings OAuth 토큰과 앱 비밀번호는 서버 런타임에서만 다룹니다.
 
 ## 기능
 
@@ -20,11 +20,20 @@ Samsung SmartThings API로 에어컨을 제어하는 개인용 Next.js 대시보
 npm install
 ```
 
-## 2. SmartThings 토큰과 기기 ID 준비
+## 2. SmartThings OAuth 앱과 기기 ID 준비
 
-1. SmartThings Personal Access Token 페이지에서 개인 토큰을 생성합니다.
-2. 토큰 권한은 최소한 기기 조회와 기기 제어 권한을 포함해야 합니다.
-3. SmartThings API, CLI, 또는 SmartThings 개발자 도구로 제어할 에어컨의 Device ID를 확인합니다.
+1. SmartThings CLI를 설치하고 `smartthings devices`로 로그인합니다.
+2. `smartthings apps:create`로 `OAuth-In App`을 생성합니다.
+3. Redirect URI는 배포 URL 기준으로 아래 값을 등록합니다.
+
+```text
+https://smart-home-heremes.vercel.app/api/smartthings/callback
+```
+
+4. 권한은 최소 `r:devices:*`, `x:devices:*`, `r:rules:*`, `w:rules:*`를 선택합니다.
+5. 생성 완료 시 표시되는 `OAuth Client Id`와 `OAuth Client Secret`을 저장합니다. Secret은 다시 표시되지 않습니다.
+6. `smartthings devices` 또는 SmartThings API로 제어할 에어컨의 Device ID를 확인합니다.
+7. 여러 폰/브라우저에서 같은 연결을 쓰려면 Vercel Marketplace에서 Upstash Redis를 프로젝트에 연결합니다.
 
 ## 3. 환경 변수 설정
 
@@ -37,10 +46,14 @@ cp .env.example .env.local
 필수 값:
 
 ```bash
-SMARTTHINGS_TOKEN=your_personal_access_token
 SMARTTHINGS_DEVICE_ID=your_air_conditioner_device_id
 SMARTTHINGS_LOCATION_ID=your_location_id
 APP_PASSWORD=change_this_dashboard_password
+SMARTTHINGS_CLIENT_ID=your_oauth_client_id
+SMARTTHINGS_CLIENT_SECRET=your_oauth_client_secret
+SMARTTHINGS_REDIRECT_URI=https://smart-home-heremes.vercel.app/api/smartthings/callback
+KV_REST_API_URL=your_upstash_redis_rest_url
+KV_REST_API_TOKEN=your_upstash_redis_rest_token
 ```
 
 선택 값:
@@ -68,7 +81,19 @@ SMARTTHINGS_TEMPERATURE_COMMAND=setCoolingSetpoint
 
 에어컨 모델에 따라 모드 capability와 attribute가 다를 수 있습니다. 예를 들어 일부 모델은 커스텀 capability를 쓰므로, 상태 조회 결과나 SmartThings CLI에서 확인한 capability ID를 `SMARTTHINGS_MODE_CAPABILITY`에 넣고 attribute 이름을 `SMARTTHINGS_MODE_ATTRIBUTE`에 넣으면 됩니다.
 
-## 4. 로컬 실행
+`SMARTTHINGS_TOKEN`은 예전 PAT 방식의 임시 fallback입니다. PAT는 장기 운영용이 아니므로 OAuth 연결 후에는 사용하지 않는 것을 권장합니다.
+
+## 4. SmartThings 계정 연결
+
+배포 후 앱 비밀번호로 로그인한 뒤 대시보드에서 `SmartThings 연결` 버튼을 누르거나 아래 경로로 이동합니다.
+
+```text
+/api/smartthings/connect
+```
+
+삼성 계정 승인 후 `/api/smartthings/callback`에서 access token과 refresh token을 받아 Upstash Redis에 저장합니다. 이후 다른 폰이나 브라우저에서도 앱 비밀번호만 입력하면 같은 서버 저장 토큰으로 SmartThings API를 호출합니다.
+
+## 5. 로컬 실행
 
 ```bash
 npm run dev
@@ -102,7 +127,7 @@ npm run typecheck
 npm run build
 ```
 
-## 5. Vercel 배포
+## 6. Vercel 배포
 
 1. 이 프로젝트를 GitHub, GitLab, 또는 Bitbucket 저장소에 push합니다.
 2. Vercel에서 `Add New Project`를 선택하고 저장소를 연결합니다.
@@ -110,18 +135,23 @@ npm run build
 4. Vercel Project Settings의 `Environment Variables`에 아래 값을 추가합니다.
 
 ```bash
-SMARTTHINGS_TOKEN=your_personal_access_token
 SMARTTHINGS_DEVICE_ID=your_air_conditioner_device_id
 SMARTTHINGS_LOCATION_ID=your_location_id
 APP_PASSWORD=change_this_dashboard_password
+SMARTTHINGS_CLIENT_ID=your_oauth_client_id
+SMARTTHINGS_CLIENT_SECRET=your_oauth_client_secret
+SMARTTHINGS_REDIRECT_URI=https://smart-home-heremes.vercel.app/api/smartthings/callback
+KV_REST_API_URL=your_upstash_redis_rest_url
+KV_REST_API_TOKEN=your_upstash_redis_rest_token
 ```
 
 5. 필요한 경우 선택 환경 변수도 같은 화면에 추가합니다.
 6. `Deploy`를 실행합니다.
+7. 배포된 앱에 로그인한 뒤 `SmartThings 연결`을 한 번 수행합니다.
 
 ## 보안 메모
 
-- `SMARTTHINGS_TOKEN`은 `NEXT_PUBLIC_` 접두사를 붙이지 마세요.
+- SmartThings OAuth 값과 Upstash Redis 토큰에는 `NEXT_PUBLIC_` 접두사를 붙이지 마세요.
 - 클라이언트 컴포넌트는 SmartThings API를 직접 호출하지 않고 `/api/ac/*`만 호출합니다.
 - `APP_PASSWORD`를 설정하면 대시보드와 API Route가 앱 자체 비밀번호로 보호됩니다.
 - Vercel의 `Deployment Protection`을 끄더라도 앱 비밀번호는 유지됩니다.
@@ -206,6 +236,14 @@ APP_PASSWORD=change_this_dashboard_password
 ### `DELETE /api/ac/schedules/:id`
 
 대기 중인 예약이나 예전 버전에서 만든 꺼짐 타이머를 취소합니다.
+
+### `GET /api/smartthings/connect`
+
+SmartThings OAuth 승인 화면으로 이동합니다. 앱 비밀번호 로그인 후 호출해야 합니다.
+
+### `GET /api/smartthings/callback`
+
+SmartThings OAuth 승인 후 authorization code를 받아 access token과 refresh token으로 교환하고 Upstash Redis에 저장합니다.
 
 ## 예약 동작
 

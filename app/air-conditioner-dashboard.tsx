@@ -197,6 +197,7 @@ export function AirConditionerDashboard() {
       second: "2-digit",
     }).format(new Date(status.updatedAt));
   }, [status?.updatedAt]);
+  const needsSmartThingsConnection = isSmartThingsConnectionError(error);
 
   async function submitCommand<TBody extends Record<string, unknown>>(
     action: string,
@@ -419,10 +420,20 @@ export function AirConditionerDashboard() {
         {error ? (
           <div
             role="alert"
-            className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+            className="flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-start sm:justify-between"
           >
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            <p>{error}</p>
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <p>{error}</p>
+            </div>
+            {needsSmartThingsConnection ? (
+              <a
+                href="/api/smartthings/connect"
+                className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-red-700 px-4 text-sm font-bold text-white transition hover:bg-red-800"
+              >
+                SmartThings 연결
+              </a>
+            ) : null}
           </div>
         ) : null}
 
@@ -789,6 +800,16 @@ class AuthRequiredError extends Error {
 
 function toErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
+}
+
+function isSmartThingsConnectionError(error: string | null) {
+  return Boolean(
+    error?.includes("SmartThings OAuth 연결") ||
+      error?.includes("UPSTASH_REDIS_REST_URL") ||
+      error?.includes("UPSTASH_REDIS_REST_TOKEN") ||
+      error?.includes("KV_REST_API_URL") ||
+      error?.includes("KV_REST_API_TOKEN"),
+  );
 }
 
 function buildOptimisticStatusPatch(

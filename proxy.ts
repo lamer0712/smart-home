@@ -1,7 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_COOKIE_NAME, createSessionToken } from "@/lib/auth";
 
-const PUBLIC_PATH_PREFIXES = ["/login", "/api/auth", "/_next", "/favicon.ico"];
+const PUBLIC_PATH_PREFIXES = [
+  "/login",
+  "/api/auth",
+  "/api/smartthings/callback",
+  "/_next",
+  "/favicon.ico",
+];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

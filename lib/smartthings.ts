@@ -1,5 +1,7 @@
 import "server-only";
 
+import { getSmartThingsBearerToken, isSmartThingsOAuthConfigured } from "@/lib/smartthings-oauth";
+
 export type PowerState = "on" | "off";
 export type AirConditionerMode = "cool" | "wind";
 export type AirConditionerFanMode = "auto" | "medium" | "high" | "turbo";
@@ -252,8 +254,10 @@ export function getSmartThingsConfig() {
   const token = process.env.SMARTTHINGS_TOKEN;
   const deviceId = process.env.SMARTTHINGS_DEVICE_ID;
 
-  if (!token) {
-    throw new SmartThingsConfigError("SMARTTHINGS_TOKEN is not configured.");
+  if (!token && !isSmartThingsOAuthConfigured()) {
+    throw new SmartThingsConfigError(
+      "SMARTTHINGS_TOKEN 또는 SmartThings OAuth 환경 변수가 설정되지 않았습니다.",
+    );
   }
 
   if (!deviceId) {
@@ -283,6 +287,7 @@ export async function smartThingsFetch<T = unknown>(
 ): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.requestTimeoutMs);
+  const token = await getSmartThingsBearerToken(config.token);
   let response: Response;
 
   try {
@@ -290,7 +295,7 @@ export async function smartThingsFetch<T = unknown>(
       ...init,
       signal: controller.signal,
       headers: {
-        Authorization: `Bearer ${config.token}`,
+        Authorization: `Bearer ${token}`,
         Accept: "application/json",
         ...init.headers,
       },

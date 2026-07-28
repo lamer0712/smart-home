@@ -16,3 +16,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 .DS_Store
+.env*
+!.env.example
+.agents
+skills-lock.json
