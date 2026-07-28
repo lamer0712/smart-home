@@ -3,7 +3,13 @@
 import { AlertCircle, Loader2, Lock } from "lucide-react";
 import { FormEvent, useState } from "react";
 
-export function LoginForm({ passwordConfigured }: { passwordConfigured: boolean }) {
+export function LoginForm({
+  passwordConfigured,
+  onSuccess,
+}: {
+  passwordConfigured: boolean;
+  onSuccess?: () => void;
+}) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(
     passwordConfigured ? null : "APP_PASSWORD 환경 변수가 설정되지 않았습니다.",
@@ -27,6 +33,11 @@ export function LoginForm({ passwordConfigured }: { passwordConfigured: boolean 
 
       if (!response.ok) {
         throw new Error(payload.error ?? "로그인에 실패했습니다.");
+      }
+
+      if (onSuccess) {
+        onSuccess();
+        return;
       }
 
       const next = new URLSearchParams(window.location.search).get("next") || "/";
@@ -65,6 +76,9 @@ export function LoginForm({ passwordConfigured }: { passwordConfigured: boolean 
           onChange={(event) => setPassword(event.target.value)}
           disabled={loading || !passwordConfigured}
           autoComplete="current-password"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           className="mt-5 h-12 w-full rounded-md border border-slate-300 px-3 text-base font-semibold text-slate-950 outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="비밀번호"
           autoFocus

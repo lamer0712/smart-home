@@ -373,6 +373,12 @@ export function AirConditionerDashboard() {
     setError(toErrorMessage(requestError));
   }
 
+  function handleLoginSuccess() {
+    setAuthRequired(false);
+    void fetchStatus();
+    void fetchSchedules({ silent: true });
+  }
+
   const pendingSchedules = schedules
     .filter((schedule) => schedule.status === "pending")
     .sort((left, right) => new Date(left.runAt).getTime() - new Date(right.runAt).getTime());
@@ -382,7 +388,7 @@ export function AirConditionerDashboard() {
     .slice(0, 3);
 
   if (authRequired) {
-    return <LoginForm passwordConfigured />;
+    return <LoginForm passwordConfigured onSuccess={handleLoginSuccess} />;
   }
 
   return (
