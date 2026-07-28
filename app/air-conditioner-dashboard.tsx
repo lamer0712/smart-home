@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LoginForm } from "./login/login-form";
 
 type PowerState = "on" | "off";
 
@@ -96,6 +97,7 @@ export function AirConditionerDashboard() {
   const [scheduleOffAt, setScheduleOffAt] = useState(() => toDatetimeLocal(60));
   const [schedules, setSchedules] = useState<PowerSchedule[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>("status");
   const [awaitingDeviceSync, setAwaitingDeviceSync] = useState(false);
   const hasSyncedTemperature = useRef(false);
@@ -117,6 +119,7 @@ export function AirConditionerDashboard() {
 
     try {
       const payload = await requestJson<StatusPayload>("/api/ac/status");
+      setAuthRequired(false);
       const nextStatus = silent ? applyPendingDesiredStatus(payload.status) : payload.status;
       setStatus(nextStatus);
       const nextControls = payload.controls ?? controls;
@@ -140,7 +143,7 @@ export function AirConditionerDashboard() {
         hasSyncedFanMode.current = true;
       }
     } catch (requestError) {
-      setError(toErrorMessage(requestError));
+      handleRequestError(requestError);
     } finally {
       if (!silent) setPendingAction(null);
     }
@@ -152,9 +155,10 @@ export function AirConditionerDashboard() {
 
     try {
       const payload = await requestJson<SchedulesPayload>("/api/ac/schedules");
+      setAuthRequired(false);
       setSchedules(payload.schedules);
     } catch (requestError) {
-      setError(toErrorMessage(requestError));
+      handleRequestError(requestError);
     } finally {
       if (!silent) setPendingAction(null);
     }
@@ -210,6 +214,7 @@ export function AirConditionerDashboard() {
         },
         body: JSON.stringify(body),
       });
+      setAuthRequired(false);
       const optimisticPatch = buildOptimisticStatusPatch(payload.status, action, body);
       if (Object.keys(optimisticPatch).length > 0) {
         pendingDesiredStatus.current = {
@@ -232,7 +237,7 @@ export function AirConditionerDashboard() {
         setTargetFanMode(optimisticStatus.fanMode);
       }
     } catch (requestError) {
-      setError(toErrorMessage(requestError));
+      handleRequestError(requestError);
     } finally {
       setPendingAction(null);
     }
@@ -259,6 +264,7 @@ export function AirConditionerDashboard() {
           ...(power === "on" ? { coolingSetpoint } : {}),
         }),
       });
+      setAuthRequired(false);
       setSchedules(payload.schedules);
 
       if (power === "on") {
@@ -267,7 +273,7 @@ export function AirConditionerDashboard() {
         setScheduleOffAt(toDatetimeLocal(60));
       }
     } catch (requestError) {
-      setError(toErrorMessage(requestError));
+      handleRequestError(requestError);
     } finally {
       setPendingAction(null);
     }
@@ -343,12 +349,28 @@ export function AirConditionerDashboard() {
       const payload = await requestJson<SchedulesPayload>(`/api/ac/schedules/${id}`, {
         method: "DELETE",
       });
+      setAuthRequired(false);
       setSchedules(payload.schedules);
     } catch (requestError) {
-      setError(toErrorMessage(requestError));
+      handleRequestError(requestError);
     } finally {
       setPendingAction(null);
     }
+  }
+
+  function handleRequestError(requestError: unknown) {
+    if (requestError instanceof AuthRequiredError) {
+      clearClimateCommandTimer();
+      delayedRefreshTimers.current.forEach((timer) => window.clearTimeout(timer));
+      delayedRefreshTimers.current = [];
+      pendingDesiredStatus.current = null;
+      setAwaitingDeviceSync(false);
+      setAuthRequired(true);
+      setError(null);
+      return;
+    }
+
+    setError(toErrorMessage(requestError));
   }
 
   const pendingSchedules = schedules
@@ -358,6 +380,10 @@ export function AirConditionerDashboard() {
     .filter((schedule) => schedule.status !== "pending")
     .sort((left, right) => new Date(right.runAt).getTime() - new Date(left.runAt).getTime())
     .slice(0, 3);
+
+  if (authRequired) {
+    return <LoginForm passwordConfigured />;
+  }
 
   return (
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
@@ -738,9 +764,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const payload = (await response.json().catch(() => ({}))) as { error?: string };
 
   if (response.status === 401) {
-    const next = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.assign(`/login?next=${next}`);
-    throw new Error("로그인이 필요합니다.");
+    throw new AuthRequiredError();
   }
 
   if (!response.ok) {
@@ -748,6 +772,13 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   }
 
   return payload as T;
+}
+
+class AuthRequiredError extends Error {
+  constructor() {
+    super("로그인이 필요합니다.");
+    this.name = "AuthRequiredError";
+  }
 }
 
 function toErrorMessage(error: unknown) {
