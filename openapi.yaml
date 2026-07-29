@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: Smart Home Air Conditioner API
   version: 1.0.0
@@ -19,32 +19,40 @@ components:
       additionalProperties: true
       properties:
         power:
-          type: string
-          nullable: true
-          enum:
-            - "on"
-            - "off"
+          oneOf:
+            - type: string
+              enum:
+                - "on"
+                - "off"
+            - type: "null"
         mode:
-          type: string
-          nullable: true
+          oneOf:
+            - type: string
+            - type: "null"
         fanMode:
-          type: string
-          nullable: true
+          oneOf:
+            - type: string
+            - type: "null"
         coolingSetpoint:
-          type: number
-          nullable: true
+          oneOf:
+            - type: number
+            - type: "null"
         coolingSetpointUnit:
-          type: string
-          nullable: true
+          oneOf:
+            - type: string
+            - type: "null"
         roomTemperature:
-          type: number
-          nullable: true
+          oneOf:
+            - type: number
+            - type: "null"
         roomTemperatureUnit:
-          type: string
-          nullable: true
+          oneOf:
+            - type: string
+            - type: "null"
         humidity:
-          type: number
-          nullable: true
+          oneOf:
+            - type: number
+            - type: "null"
         updatedAt:
           type: string
           format: date-time
