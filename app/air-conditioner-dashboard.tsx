@@ -542,13 +542,6 @@ export function AirConditionerDashboard() {
                 ))}
               </div>
             </div>
-
-            {pendingAction === "climate" ? (
-              <div className="mt-6 inline-flex h-10 items-center gap-2 text-sm font-bold text-slate-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                전송 중
-              </div>
-            ) : null}
           </div>
         </section>
 
