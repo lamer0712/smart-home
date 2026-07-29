@@ -96,12 +96,14 @@ export function AirConditionerDashboard() {
   const [scheduleOnAt, setScheduleOnAt] = useState(() => toDatetimeLocal(30));
   const [schedules, setSchedules] = useState<PowerSchedule[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>("status");
   const [awaitingDeviceSync, setAwaitingDeviceSync] = useState(false);
   const hasSyncedTemperature = useRef(false);
   const hasSyncedFanMode = useRef(false);
   const delayedRefreshTimers = useRef<number[]>([]);
+  const toastTimer = useRef<number | null>(null);
   const climateCommandTimer = useRef<number | null>(null);
   const pendingDesiredStatus = useRef<PendingDesiredStatus | null>(null);
 
@@ -174,6 +176,7 @@ export function AirConditionerDashboard() {
     return () => {
       window.clearInterval(interval);
       delayedRefreshTimers.current.forEach((timer) => window.clearTimeout(timer));
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
       if (climateCommandTimer.current) window.clearTimeout(climateCommandTimer.current);
     };
   }, [fetchSchedules, fetchStatus]);
@@ -202,7 +205,7 @@ export function AirConditionerDashboard() {
     action: string,
     url: string,
     body: TBody,
-  ) {
+  ): Promise<boolean> {
     setPendingAction(action);
     setError(null);
 
@@ -236,8 +239,10 @@ export function AirConditionerDashboard() {
       if (optimisticStatus.fanMode) {
         setTargetFanMode(optimisticStatus.fanMode);
       }
+      return true;
     } catch (requestError) {
       handleRequestError(requestError);
+      return false;
     } finally {
       setPendingAction(null);
     }
@@ -279,7 +284,13 @@ export function AirConditionerDashboard() {
 
   async function togglePower() {
     clearClimateCommandTimer();
-    await submitCommand("power-toggle", "/api/ac/power", { power: powerOn ? "off" : "on" });
+    const success = await submitCommand("power-toggle", "/api/ac/power", {
+      power: powerOn ? "off" : "on",
+    });
+
+    if (success && powerOn) {
+      showToast("1시간 송풍 후 에어콘이 꺼집니다.");
+    }
   }
 
   function changeTargetTemperature(temperature: number) {
@@ -308,6 +319,15 @@ export function AirConditionerDashboard() {
     if (!climateCommandTimer.current) return;
     window.clearTimeout(climateCommandTimer.current);
     climateCommandTimer.current = null;
+  }
+
+  function showToast(message: string) {
+    setToastMessage(message);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => {
+      setToastMessage(null);
+      toastTimer.current = null;
+    }, 3_000);
   }
 
   function queueDelayedStatusRefresh() {
@@ -616,6 +636,11 @@ export function AirConditionerDashboard() {
           ) : null}
         </section>
       </div>
+      {toastMessage ? (
+        <div className="fixed inset-x-4 bottom-6 z-50 mx-auto max-w-sm rounded-md bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-lg">
+          {toastMessage}
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -800,6 +825,7 @@ function buildOptimisticStatusPatch(
 
   if (body.power === "off") {
     patch.power = "off";
+    patch.mode = "wind";
   }
 
   if (typeof body.fanMode === "string") {

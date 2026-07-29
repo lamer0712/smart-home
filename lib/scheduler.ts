@@ -91,9 +91,11 @@ type RulesResponse = {
 };
 
 const RULE_NAME_PREFIX = "SmartThings AC Reservation";
+const WIND_DOWN_OFF_RULE_NAME_PREFIX = "SmartThings AC Wind Down Off";
 const TIMER_RULE_MARKER = "TIMER";
 const WIND_DOWN_RULE_MARKER = "WIND_DOWN";
 const WIND_DOWN_TIMER_RULE_MARKER = `${WIND_DOWN_RULE_MARKER}_OFF`;
+const WIND_DOWN_OFF_MINUTES = 60;
 
 export async function ensureSchedulerStarted() {
   return;
@@ -121,6 +123,7 @@ export async function createPowerSchedule(
   const locationId = await getLocationId();
   const timeZoneId = getTimeZoneId();
   const body = createRuleRequest(power, runAt, {
+    name: `${RULE_NAME_PREFIX} ${options.timer ? `${TIMER_RULE_MARKER} ` : ""}${power.toUpperCase()} ${runAt.toISOString()}`,
     deviceId: config.deviceId,
     component: config.component,
     locationId,
@@ -128,7 +131,6 @@ export async function createPowerSchedule(
     coolingSetpoint,
     modeCapability: config.modeCapability,
     temperatureCapability: config.temperatureCapability,
-    timer: options.timer,
   });
 
   const rule = await smartThingsFetch<Rule>(
@@ -149,6 +151,63 @@ export async function createPowerSchedule(
   }
 
   return schedule;
+}
+
+export async function scheduleWindDownPowerOff() {
+  const config = getSmartThingsConfig();
+  const locationId = await getLocationId();
+  const timeZoneId = getTimeZoneId();
+  const runAt = new Date(Date.now() + WIND_DOWN_OFF_MINUTES * 60_000);
+
+  await cancelPendingWindDownPowerOff();
+
+  await smartThingsFetch<Rule>(
+    `/rules?locationId=${encodeURIComponent(locationId)}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(
+        createRuleRequest("off", runAt, {
+          name: `${WIND_DOWN_OFF_RULE_NAME_PREFIX} ${runAt.toISOString()}`,
+          deviceId: config.deviceId,
+          component: config.component,
+          locationId,
+          timeZoneId,
+          modeCapability: config.modeCapability,
+          temperatureCapability: config.temperatureCapability,
+        }),
+      ),
+    },
+    config,
+  );
+}
+
+export async function cancelPendingWindDownPowerOff() {
+  const { locationId, rules } = await listWindDownPowerOffRules();
+  const config = getSmartThingsConfig();
+
+  await Promise.all(
+    rules.map((rule) =>
+      smartThingsFetch<Rule>(
+        `/rules/${encodeURIComponent(rule.id)}?locationId=${encodeURIComponent(locationId)}`,
+        {
+          method: "DELETE",
+        },
+        config,
+      ),
+    ),
+  );
+}
+
+export async function getActiveWindDownPowerOff() {
+  const { rules } = await listWindDownPowerOffRules();
+  return rules
+    .map(ruleToSchedule)
+    .filter((schedule): schedule is PowerSchedule => schedule !== null)
+    .filter((schedule) => schedule.status === "pending")
+    .sort((left, right) => new Date(left.runAt).getTime() - new Date(right.runAt).getTime())[0];
 }
 
 export async function cancelPowerSchedule(id: string) {
@@ -191,6 +250,25 @@ async function listReservationRules() {
   };
 }
 
+async function listWindDownPowerOffRules() {
+  const config = getSmartThingsConfig();
+  const locationId = await getLocationId();
+  const payload = await smartThingsFetch<Rule[] | RulesResponse>(
+    `/rules?locationId=${encodeURIComponent(locationId)}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+    config,
+  );
+  const rules = Array.isArray(payload) ? payload : payload.items ?? [];
+
+  return {
+    locationId,
+    rules: rules.filter((rule) => rule.name.startsWith(WIND_DOWN_OFF_RULE_NAME_PREFIX)),
+  };
+}
+
 async function getLocationId() {
   const config = getSmartThingsConfig();
   const locationId = process.env.SMARTTHINGS_LOCATION_ID;
@@ -216,6 +294,7 @@ function createRuleRequest(
   power: PowerState,
   runAt: Date,
   {
+    name,
     deviceId,
     component,
     locationId,
@@ -223,8 +302,8 @@ function createRuleRequest(
     coolingSetpoint,
     modeCapability,
     temperatureCapability,
-    timer,
   }: {
+    name: string;
     deviceId: string;
     component: string;
     locationId: string;
@@ -232,7 +311,6 @@ function createRuleRequest(
     coolingSetpoint?: number;
     modeCapability: string;
     temperatureCapability: string;
-    timer?: boolean;
   },
 ) {
   const dateTime = getDateTimeParts(runAt, timeZoneId);
@@ -271,7 +349,7 @@ function createRuleRequest(
   }
 
   return {
-    name: `${RULE_NAME_PREFIX} ${timer ? `${TIMER_RULE_MARKER} ` : ""}${power.toUpperCase()} ${runAt.toISOString()}`,
+    name,
     timeZoneId,
     actions: [
       {

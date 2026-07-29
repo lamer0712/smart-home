@@ -175,7 +175,7 @@ KV_REST_API_TOKEN=your_upstash_redis_rest_token
 { "power": "off" }
 ```
 
-`off` 요청은 전원을 바로 끕니다.
+`off` 요청은 운전 모드를 송풍으로 바꾸고, 1시간 뒤 전원을 끄는 숨김 SmartThings Rule을 생성합니다. 이 숨김 Rule은 예약 목록에 표시되지 않습니다.
 
 ### `POST /api/ac/temperature`
 
