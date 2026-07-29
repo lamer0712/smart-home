@@ -718,8 +718,6 @@ function OffTimerForm({
   loading: boolean;
   disabled: boolean;
 }) {
-  const timerOptions = useMemo(() => Array.from({ length: 60 }, (_, index) => index + 1), []);
-
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
       <div>
@@ -729,28 +727,17 @@ function OffTimerForm({
         </p>
       </div>
 
-      <div className="mt-4 rounded-md border border-slate-200 bg-white p-3">
-        <div className="relative mx-auto h-40 max-w-44 overflow-hidden">
-          <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 h-12 -translate-y-1/2 rounded-md border-y border-slate-200 bg-sky-50/70" />
-          <select
-            value={minutes}
-            onChange={(event) => onMinutesChange(Number(event.target.value))}
-            disabled={disabled}
-            size={5}
-            aria-label="꺼짐까지 남은 시간"
-            className="relative z-20 h-40 w-full appearance-none overflow-y-auto bg-transparent text-center text-2xl font-bold text-slate-950 outline-none disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {timerOptions.map((option) => (
-              <option key={option} value={option} className="py-2 text-center text-lg">
-                {option}분
-              </option>
-            ))}
-          </select>
+      <div className="mt-5 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold text-slate-500">설정 시간</p>
+          <div className="mt-1 flex items-end gap-1">
+            <span className="text-5xl font-bold leading-none text-slate-950">{minutes}</span>
+            <span className="pb-1 text-base font-bold text-slate-500">분</span>
+          </div>
         </div>
-        <div className="mt-3 flex items-end justify-center gap-1">
-          <span className="text-4xl font-bold text-slate-950">{minutes}</span>
-          <span className="pb-1 text-sm font-bold text-slate-500">분 후 꺼짐</span>
-        </div>
+        <p className="pb-1 text-right text-sm font-bold text-slate-600">
+          {minutes}분 후 꺼짐
+        </p>
       </div>
 
       <div className="mt-4">
@@ -769,6 +756,24 @@ function OffTimerForm({
           <span>1분</span>
           <span>60분</span>
         </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-4 gap-2">
+        {[5, 10, 30, 60].map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onMinutesChange(option)}
+            disabled={disabled}
+            className={`h-9 rounded-md border px-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+              minutes === option
+                ? "border-sky-600 bg-sky-50 text-sky-700"
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {option}분
+          </button>
+        ))}
       </div>
 
       <button
