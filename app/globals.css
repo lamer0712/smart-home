@@ -99,34 +99,38 @@ select {
 }
 
 .metal-range {
+  --metal-range-fill: linear-gradient(90deg, #f4ddbd 0%, #a67b49 var(--range-progress, 50%), rgba(255, 255, 255, 0.13) var(--range-progress, 50%), rgba(255, 255, 255, 0.13) 100%);
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 999px;
+  background: var(--metal-range-fill);
   accent-color: #d9c2a1;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.22),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.56);
 }
 
 .metal-range::-webkit-slider-runnable-track {
   height: 0.5rem;
   border-radius: 999px;
-  background:
-    linear-gradient(
-      90deg,
-      #f4ddbd 0%,
-      #a67b49 var(--range-progress, 50%),
-      rgba(255, 255, 255, 0.12) var(--range-progress, 50%),
-      rgba(255, 255, 255, 0.12) 100%
-    );
+  background: var(--metal-range-fill);
   box-shadow:
     inset 0 1px 1px rgba(255, 255, 255, 0.22),
     inset 0 -1px 1px rgba(0, 0, 0, 0.52);
 }
 
 .metal-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
   margin-top: -0.42rem;
   height: 1.34rem;
   width: 1.34rem;
   appearance: none;
   border-radius: 999px;
   border: 0.5px solid rgba(255, 244, 230, 0.5);
-  background:
-    conic-gradient(from 20deg, #f9ebd8, #8a6a49, #f5e3c8, #6e573e, #f9ebd8);
+  background-color: #d9c2a1;
+  background-image:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.9), transparent 0.34rem),
+    linear-gradient(135deg, #fff1dc 0%, #9a7954 42%, #f4dec0 64%, #5f4a35 100%);
   box-shadow:
     inset 0 0.5px 0 rgba(255, 255, 255, 0.62),
     inset 0 -1px 4px rgba(55, 38, 22, 0.5),
@@ -150,8 +154,10 @@ select {
   width: 1.34rem;
   border-radius: 999px;
   border: 0.5px solid rgba(255, 244, 230, 0.5);
-  background:
-    conic-gradient(from 20deg, #f9ebd8, #8a6a49, #f5e3c8, #6e573e, #f9ebd8);
+  background-color: #d9c2a1;
+  background-image:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.9), transparent 0.34rem),
+    linear-gradient(135deg, #fff1dc 0%, #9a7954 42%, #f4dec0 64%, #5f4a35 100%);
   box-shadow:
     inset 0 0.5px 0 rgba(255, 255, 255, 0.62),
     inset 0 -1px 4px rgba(55, 38, 22, 0.5),
@@ -183,6 +189,9 @@ select {
 }
 
 .metal-switch-track {
+  background-image:
+    linear-gradient(115deg, rgba(255, 248, 238, 0.11), transparent 46%),
+    linear-gradient(180deg, rgba(66, 56, 43, 0.94), rgba(22, 18, 14, 0.96));
   box-shadow:
     inset 0 0.5px 1px rgba(255, 255, 255, 0.1),
     inset 0 -1px 5px rgba(0, 0, 0, 0.56),
@@ -190,10 +199,32 @@ select {
 }
 
 .metal-switch-thumb {
-  background:
-    conic-gradient(from 35deg, #fff1dc, #8f6d4a, #f8e8cf, #6b5239, #fff1dc);
+  background-color: #d9c2a1;
+  background-image:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.9), transparent 0.45rem),
+    linear-gradient(135deg, #fff1dc 0%, #8f6d4a 42%, #f8e8cf 64%, #6b5239 100%);
   box-shadow:
     inset 0 0.5px 0 rgba(255, 255, 255, 0.66),
     inset 0 -1px 5px rgba(56, 38, 22, 0.52),
     0 5px 12px rgba(0, 0, 0, 0.48);
+}
+
+.metal-switch-thumb svg {
+  color: #3a2d1e;
+  stroke: currentColor;
+}
+
+@supports (background: conic-gradient(from 20deg, #fff, #000)) {
+  .metal-range::-webkit-slider-thumb,
+  .metal-range::-moz-range-thumb {
+    background-image:
+      radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.72), transparent 0.31rem),
+      conic-gradient(from 20deg, #f9ebd8, #8a6a49, #f5e3c8, #6e573e, #f9ebd8);
+  }
+
+  .metal-switch-thumb {
+    background-image:
+      radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.72), transparent 0.42rem),
+      conic-gradient(from 35deg, #fff1dc, #8f6d4a, #f8e8cf, #6b5239, #fff1dc);
+  }
 }
