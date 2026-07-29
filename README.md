@@ -5,7 +5,7 @@ Samsung SmartThings API로 에어컨을 제어하는 개인용 Next.js 대시보
 ## 기능
 
 - 전원 켜기/끄기
-- 켜짐/꺼짐 예약
+- 켜짐 예약
 - 희망 온도 설정
 - 운전 모드 변경
 - 바람세기 변경
@@ -215,19 +215,9 @@ KV_REST_API_TOKEN=your_upstash_redis_rest_token
 
 ### `GET /api/ac/schedules`
 
-전원 예약 목록을 반환합니다. 예전 버전에서 만든 꺼짐 타이머가 남아 있으면 함께 반환되어 취소할 수 있습니다.
+전원 예약 목록을 반환합니다. 예전 버전에서 만든 전원 꺼짐 항목이 남아 있으면 함께 반환되어 취소할 수 있습니다.
 
 ### `POST /api/ac/schedules`
-
-```json
-{ "power": "off", "runAt": "2026-07-27T23:30:00.000Z" }
-```
-
-꺼짐 타이머 UI는 1분부터 60분까지 1분 단위로 선택한 뒤, 해당 시간이 지난 시각에 전원을 끄는 SmartThings Rule을 생성합니다. API에는 절대 시각을 직접 보낼 수도 있습니다.
-
-```json
-{ "power": "off", "runAt": "2026-07-27T23:30:00.000Z", "timer": true }
-```
 
 켜짐 예약은 냉방 모드로 고정되며 `coolingSetpoint`로 희망 온도를 지정합니다.
 
@@ -235,11 +225,11 @@ KV_REST_API_TOKEN=your_upstash_redis_rest_token
 { "power": "on", "runAt": "2026-07-27T23:30:00.000Z", "coolingSetpoint": 24 }
 ```
 
-`power`는 `on` 또는 `off`입니다. `runAt`은 현재보다 이후의 ISO 날짜 문자열이어야 합니다.
+`power`는 `on`입니다. `runAt`은 현재보다 이후의 ISO 날짜 문자열이어야 합니다.
 
 ### `DELETE /api/ac/schedules/:id`
 
-대기 중인 예약이나 예전 버전에서 만든 꺼짐 타이머를 취소합니다.
+대기 중인 예약이나 예전 버전에서 만든 전원 꺼짐 항목을 취소합니다.
 
 ### `GET /api/smartthings/connect`
 

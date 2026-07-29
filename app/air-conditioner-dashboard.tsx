@@ -94,7 +94,6 @@ export function AirConditionerDashboard() {
   const [targetFanMode, setTargetFanMode] = useState(FALLBACK_CONTROLS.fanModes[0]);
   const [scheduleOnTemperature, setScheduleOnTemperature] = useState(24);
   const [scheduleOnAt, setScheduleOnAt] = useState(() => toDatetimeLocal(30));
-  const [scheduleOffMinutes, setScheduleOffMinutes] = useState(30);
   const [schedules, setSchedules] = useState<PowerSchedule[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
@@ -263,7 +262,6 @@ export function AirConditionerDashboard() {
           power,
           runAt: new Date(localRunAt).toISOString(),
           ...(power === "on" ? { coolingSetpoint } : {}),
-          ...(power === "off" ? { timer: true } : {}),
         }),
       });
       setAuthRequired(false);
@@ -538,12 +536,12 @@ export function AirConditionerDashboard() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-slate-500">전원 예약</p>
-              <h2 className="mt-1 text-xl font-bold text-slate-950">켜짐 예약 / 꺼짐 타이머</h2>
+              <h2 className="mt-1 text-xl font-bold text-slate-950">켜짐 예약</h2>
             </div>
             <CalendarClock className="h-7 w-7 text-sky-700" />
           </div>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="mt-5 max-w-xl">
             <ScheduleForm
               label="켜짐 예약"
               value={scheduleOnAt}
@@ -555,18 +553,11 @@ export function AirConditionerDashboard() {
               temperatureRange={controls.temperature}
               onTemperatureChange={setScheduleOnTemperature}
             />
-            <OffTimerForm
-              minutes={scheduleOffMinutes}
-              onMinutesChange={setScheduleOffMinutes}
-              onSubmit={() => createSchedule("off", toDatetimeLocal(scheduleOffMinutes))}
-              loading={pendingAction === "schedule-off"}
-              disabled={pendingAction !== null}
-            />
           </div>
 
           <div className="mt-6">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-bold text-slate-800">대기 중인 예약 / 타이머</p>
+              <p className="text-sm font-bold text-slate-800">대기 중인 예약</p>
               <button
                 type="button"
                 onClick={() => fetchSchedules()}
@@ -595,7 +586,7 @@ export function AirConditionerDashboard() {
               </div>
             ) : (
               <p className="mt-3 rounded-md bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
-                대기 중인 예약이나 타이머가 없습니다.
+                대기 중인 예약이 없습니다.
               </p>
             )}
           </div>
@@ -700,90 +691,6 @@ function ScheduleForm({
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
         예약
-      </button>
-    </div>
-  );
-}
-
-function OffTimerForm({
-  minutes,
-  onMinutesChange,
-  onSubmit,
-  loading,
-  disabled,
-}: {
-  minutes: number;
-  onMinutesChange: (value: number) => void;
-  onSubmit: () => void;
-  loading: boolean;
-  disabled: boolean;
-}) {
-  return (
-    <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
-      <div>
-        <p className="text-sm font-bold text-slate-800">꺼짐 타이머</p>
-        <p className="mt-1 text-xs font-semibold text-slate-500">
-          선택한 시간이 지나면 전원을 끕니다.
-        </p>
-      </div>
-
-      <div className="mt-5 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold text-slate-500">설정 시간</p>
-          <div className="mt-1 flex items-end gap-1">
-            <span className="text-5xl font-bold leading-none text-slate-950">{minutes}</span>
-            <span className="pb-1 text-base font-bold text-slate-500">분</span>
-          </div>
-        </div>
-        <p className="pb-1 text-right text-sm font-bold text-slate-600">
-          {minutes}분 후 꺼짐
-        </p>
-      </div>
-
-      <div className="mt-4">
-        <input
-          type="range"
-          min={1}
-          max={60}
-          step={1}
-          value={minutes}
-          onChange={(event) => onMinutesChange(Number(event.target.value))}
-          disabled={disabled}
-          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-          aria-label="꺼짐 타이머 분"
-        />
-        <div className="mt-2 flex justify-between text-xs font-semibold text-slate-500">
-          <span>1분</span>
-          <span>60분</span>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-4 gap-2">
-        {[5, 10, 30, 60].map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => onMinutesChange(option)}
-            disabled={disabled}
-            className={`h-9 rounded-md border px-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-              minutes === option
-                ? "border-sky-600 bg-sky-50 text-sky-700"
-                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            {option}분
-          </button>
-        ))}
-      </div>
-
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={disabled}
-        className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
-        {minutes}분 후 꺼짐
       </button>
     </div>
   );
@@ -995,8 +902,7 @@ function formatScheduleStatus(schedule: PowerSchedule) {
 
 function formatScheduleTitle(schedule: PowerSchedule) {
   if (schedule.power === "on") return "켜짐 예약";
-  if (schedule.timer) return "꺼짐 타이머";
-  return "꺼짐 예약";
+  return "전원 꺼짐";
 }
 
 function formatScheduleDetail(schedule: PowerSchedule) {
