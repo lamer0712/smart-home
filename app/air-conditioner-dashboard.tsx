@@ -561,7 +561,7 @@ export function AirConditionerDashboard() {
             <CalendarClock className="h-7 w-7 text-[#d9c2a1]" />
           </div>
 
-          <div className="mt-5 max-w-xl">
+          <div className="mt-5 w-full">
             <ScheduleForm
               value={scheduleOnAt}
               onChange={setScheduleOnAt}
