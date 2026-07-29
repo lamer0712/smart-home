@@ -465,13 +465,13 @@ export function AirConditionerDashboard() {
                   disabled={pendingAction !== null}
                   className={`metal-switch-track inline-flex h-9 w-16 items-center rounded-full border p-1 transition disabled:cursor-not-allowed disabled:opacity-60 ${
                     powerOn
-                      ? "border-[#d8bf99]/30 bg-[#2f2b25]"
+                      ? "border-[#ef5a24]/30 bg-[#35150b]"
                       : "border-white/[0.07] bg-white/10"
                   }`}
                 >
                   <span
                     className={`metal-switch-thumb inline-flex h-7 w-7 items-center justify-center rounded-full transition ${
-                      powerOn ? "translate-x-7 text-[#3a2d1e]" : "translate-x-0 text-stone-700"
+                      powerOn ? "translate-x-7 text-[#2f1208]" : "translate-x-0 text-stone-700"
                     }`}
                   >
                     {pendingAction === "power-toggle" ? (
@@ -487,7 +487,7 @@ export function AirConditionerDashboard() {
             <div className="mt-6">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <span className="text-sm font-bold text-stone-100">희망온도</span>
-                <span className="text-lg font-bold text-[#ead7bc]">{targetClimateLabel}</span>
+                <span className="text-lg font-bold text-[#ffad72]">{targetClimateLabel}</span>
               </div>
               <input
                 type="range"
@@ -518,7 +518,7 @@ export function AirConditionerDashboard() {
             <div className="mt-6">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <span className="text-sm font-bold text-stone-100">바람세기</span>
-                <span className="text-lg font-bold text-[#ead7bc]">{targetFanModeLabel}</span>
+                <span className="text-lg font-bold text-[#ffad72]">{targetFanModeLabel}</span>
               </div>
               <input
                 type="range"
@@ -558,7 +558,7 @@ export function AirConditionerDashboard() {
               <p className="text-sm font-semibold text-stone-400">전원 예약</p>
               <h2 className="mt-1 text-xl font-bold text-stone-50">켜짐 예약</h2>
             </div>
-            <CalendarClock className="h-7 w-7 text-[#d9c2a1]" />
+            <CalendarClock className="h-7 w-7 text-[#ef5a24]" />
           </div>
 
           <div className="mt-5 w-full">
@@ -636,7 +636,7 @@ export function AirConditionerDashboard() {
         </section>
       </div>
       {toastMessage ? (
-        <div className="fixed inset-x-4 bottom-6 z-50 mx-auto max-w-sm rounded-md border border-[#d9c2a1]/25 bg-[#111315]/95 px-4 py-3 text-center text-sm font-bold text-stone-50 shadow-lg">
+        <div className="fixed inset-x-4 bottom-6 z-50 mx-auto max-w-sm rounded-md border border-[#ef5a24]/25 bg-[#111315]/95 px-4 py-3 text-center text-sm font-bold text-stone-50 shadow-lg">
           {toastMessage}
         </div>
       ) : null}
@@ -672,14 +672,14 @@ function ScheduleForm({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
-          className="schedule-datetime-input metal-input block h-11 w-full max-w-full min-w-0 appearance-none rounded-md px-3 py-0 text-base font-semibold leading-none outline-none transition focus:border-[#d9c2a1]/60 focus:ring-2 focus:ring-[#d9c2a1]/10 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
+          className="schedule-datetime-input metal-input block h-11 w-full max-w-full min-w-0 appearance-none rounded-md px-3 py-0 text-base font-semibold leading-none outline-none transition focus:border-[#ef5a24]/60 focus:ring-2 focus:ring-[#ef5a24]/10 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
         />
       </div>
       {temperatureRange && typeof temperature === "number" && onTemperatureChange ? (
         <div className="mt-4">
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm font-bold text-stone-100">희망 온도</span>
-            <span className="text-lg font-bold text-[#ead7bc]">{temperature}℃</span>
+            <span className="text-lg font-bold text-[#ffad72]">{temperature}℃</span>
           </div>
           <input
             type="range"
@@ -724,7 +724,7 @@ function ScheduleRow({
   onCancel: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border border-[#dcc7a4]/15 bg-white/[0.03] px-4 py-3">
+    <div className="flex items-center justify-between gap-3 rounded-md border border-[#ef5a24]/15 bg-white/[0.03] px-4 py-3">
       <div>
         <p className="text-sm font-bold text-stone-100">
           {formatScheduleTitle(schedule)}
