@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { AUTH_COOKIE_NAME, createSessionToken } from "@/lib/auth";
+import { AUTH_COOKIE_NAME, createSessionToken, isValidApiKeyRequest } from "@/lib/auth";
 
 const PUBLIC_PATH_PREFIXES = [
   "/login",
@@ -13,6 +13,13 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return NextResponse.next();
+  }
+
+  if (
+    pathname.startsWith("/api/ac/") &&
+    isValidApiKeyRequest(request.headers, process.env.SMART_HOME_API_KEY)
+  ) {
     return NextResponse.next();
   }
 

@@ -49,6 +49,7 @@ cp .env.example .env.local
 SMARTTHINGS_DEVICE_ID=your_air_conditioner_device_id
 SMARTTHINGS_LOCATION_ID=your_location_id
 APP_PASSWORD=change_this_dashboard_password
+SMART_HOME_API_KEY=change_this_server_to_server_api_key
 SMARTTHINGS_CLIENT_ID=your_oauth_client_id
 SMARTTHINGS_CLIENT_SECRET=your_oauth_client_secret
 SMARTTHINGS_REDIRECT_URI=https://smart-home-heremes.vercel.app/api/smartthings/callback
@@ -138,6 +139,7 @@ npm run build
 SMARTTHINGS_DEVICE_ID=your_air_conditioner_device_id
 SMARTTHINGS_LOCATION_ID=your_location_id
 APP_PASSWORD=change_this_dashboard_password
+SMART_HOME_API_KEY=change_this_server_to_server_api_key
 SMARTTHINGS_CLIENT_ID=your_oauth_client_id
 SMARTTHINGS_CLIENT_SECRET=your_oauth_client_secret
 SMARTTHINGS_REDIRECT_URI=https://smart-home-heremes.vercel.app/api/smartthings/callback
@@ -154,10 +156,20 @@ KV_REST_API_TOKEN=your_upstash_redis_rest_token
 - SmartThings OAuth 값과 Upstash Redis 토큰에는 `NEXT_PUBLIC_` 접두사를 붙이지 마세요.
 - 클라이언트 컴포넌트는 SmartThings API를 직접 호출하지 않고 `/api/ac/*`만 호출합니다.
 - `APP_PASSWORD`를 설정하면 대시보드와 API Route가 앱 자체 비밀번호로 보호됩니다.
+- `SMART_HOME_API_KEY`를 설정하면 `/api/ac/*`는 서버 간 호출에서 `Authorization: Bearer ...` 헤더로 비밀번호 로그인 없이 접근할 수 있습니다.
 - Vercel의 `Deployment Protection`을 끄더라도 앱 비밀번호는 유지됩니다.
 - `.env`, `.env.local`, `.vercel`은 `.gitignore`에 포함되어 있습니다.
 
 ## API Routes
+
+다른 프로젝트에서 `/api/ac/*`를 호출할 때는 아래처럼 API 키를 보냅니다.
+
+```bash
+curl https://smart-home-heremes.vercel.app/api/ac/status \
+  -H "Authorization: Bearer $SMART_HOME_API_KEY"
+```
+
+대체 헤더로 `X-Smart-Home-Api-Key: $SMART_HOME_API_KEY`도 사용할 수 있습니다.
 
 ### `GET /api/ac/status`
 

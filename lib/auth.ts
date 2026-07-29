@@ -15,3 +15,14 @@ export async function isValidSession(cookieValue: string | undefined, password: 
 
   return cookieValue === (await createSessionToken(password));
 }
+
+export function isValidApiKeyRequest(headers: Headers, apiKey: string | undefined) {
+  if (!apiKey) return false;
+
+  const authorization = headers.get("authorization");
+  const bearerToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+  const headerApiKey = headers.get("x-smart-home-api-key");
+  const submittedApiKey = bearerToken ?? headerApiKey;
+
+  return submittedApiKey === apiKey;
+}
