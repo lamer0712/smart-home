@@ -1,0 +1,323 @@
+openapi: 3.1.0
+info:
+  title: Smart Home Air Conditioner API
+  version: 1.0.0
+  description: Control and inspect the Samsung SmartThings air conditioner.
+servers:
+  - url: https://smart-home-heremes.vercel.app
+security:
+  - SmartHomeApiKey: []
+components:
+  securitySchemes:
+    SmartHomeApiKey:
+      type: http
+      scheme: bearer
+      description: Use the SMART_HOME_API_KEY value as a Bearer token.
+  schemas:
+    AcStatus:
+      type: object
+      additionalProperties: true
+      properties:
+        power:
+          type:
+            - string
+            - "null"
+          enum:
+            - "on"
+            - "off"
+            - null
+        mode:
+          type:
+            - string
+            - "null"
+        fanMode:
+          type:
+            - string
+            - "null"
+        coolingSetpoint:
+          type:
+            - number
+            - "null"
+        coolingSetpointUnit:
+          type:
+            - string
+            - "null"
+        roomTemperature:
+          type:
+            - number
+            - "null"
+        roomTemperatureUnit:
+          type:
+            - string
+            - "null"
+        humidity:
+          type:
+            - number
+            - "null"
+        updatedAt:
+          type: string
+          format: date-time
+    Controls:
+      type: object
+      properties:
+        temperature:
+          type: object
+          properties:
+            min:
+              type: number
+            max:
+              type: number
+            step:
+              type: number
+        modes:
+          type: array
+          items:
+            type: string
+        fanModes:
+          type: array
+          items:
+            type: string
+    PowerSchedule:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        power:
+          type: string
+          enum:
+            - "on"
+            - "off"
+        runAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - pending
+            - executed
+        mode:
+          type: string
+        coolingSetpoint:
+          type: number
+        source:
+          type: string
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+paths:
+  /api/ac/status:
+    get:
+      operationId: getAirConditionerStatus
+      summary: Get air conditioner status
+      description: Returns the latest AC status and supported UI control ranges.
+      responses:
+        "200":
+          description: Current air conditioner status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/AcStatus"
+                  controls:
+                    $ref: "#/components/schemas/Controls"
+        "401":
+          description: Missing or invalid API key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/ac/power:
+    post:
+      operationId: setAirConditionerPower
+      summary: Turn the air conditioner on or off
+      description: Turning off starts wind mode and schedules power off after 1 hour.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - power
+              properties:
+                power:
+                  type: string
+                  enum:
+                    - "on"
+                    - "off"
+      responses:
+        "200":
+          description: Updated air conditioner status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/AcStatus"
+  /api/ac/climate:
+    post:
+      operationId: setAirConditionerClimate
+      summary: Set AC mode, temperature, and fan mode
+      description: Use cool with temperature for cooling, or wind for fan-only mode. fanMode is optional.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mode
+              properties:
+                mode:
+                  type: string
+                  enum:
+                    - cool
+                    - wind
+                temperature:
+                  type: number
+                  minimum: 16
+                  maximum: 30
+                  description: Required when mode is cool.
+                fanMode:
+                  type: string
+                  enum:
+                    - auto
+                    - medium
+                    - high
+                    - turbo
+      responses:
+        "200":
+          description: Updated air conditioner status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/AcStatus"
+  /api/ac/fan-mode:
+    post:
+      operationId: setAirConditionerFanMode
+      summary: Set fan speed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fanMode
+              properties:
+                fanMode:
+                  type: string
+                  enum:
+                    - auto
+                    - medium
+                    - high
+                    - turbo
+      responses:
+        "200":
+          description: Updated air conditioner status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: "#/components/schemas/AcStatus"
+  /api/ac/schedules:
+    get:
+      operationId: listAirConditionerSchedules
+      summary: List pending power schedules
+      responses:
+        "200":
+          description: Schedule list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schedules:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PowerSchedule"
+    post:
+      operationId: createAirConditionerPowerOnSchedule
+      summary: Create a power-on schedule
+      description: Creates a SmartThings Rule that turns the AC on in cool mode at the specified time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - power
+                - runAt
+                - coolingSetpoint
+              properties:
+                power:
+                  type: string
+                  enum:
+                    - "on"
+                runAt:
+                  type: string
+                  format: date-time
+                  description: Future ISO 8601 date-time.
+                coolingSetpoint:
+                  type: number
+                  minimum: 16
+                  maximum: 30
+      responses:
+        "201":
+          description: Created schedule and current schedule list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schedule:
+                    $ref: "#/components/schemas/PowerSchedule"
+                  schedules:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PowerSchedule"
+  /api/ac/schedules/{id}:
+    delete:
+      operationId: cancelAirConditionerSchedule
+      summary: Cancel a pending power schedule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cancelled schedule and current schedule list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schedule:
+                    $ref: "#/components/schemas/PowerSchedule"
+                  schedules:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PowerSchedule"
+        "404":
+          description: Schedule not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"

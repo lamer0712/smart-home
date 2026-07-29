@@ -171,6 +171,16 @@ curl https://smart-home-heremes.vercel.app/api/ac/status \
 
 대체 헤더로 `X-Smart-Home-Api-Key: $SMART_HOME_API_KEY`도 사용할 수 있습니다.
 
+## ChatGPT Custom GPT Action
+
+ChatGPT에서 자연어로 에어컨을 제어하려면 Custom GPT의 `Actions`에 `openapi.yaml`을 등록합니다.
+
+1. ChatGPT에서 `Explore GPTs` → `Create`를 엽니다.
+2. `Configure` → `Actions` → `Create new action`을 선택합니다.
+3. Authentication은 `API Key`를 선택하고 `Bearer` 방식으로 `SMART_HOME_API_KEY` 값을 입력합니다.
+4. Schema 영역에 이 저장소의 `openapi.yaml` 내용을 붙여넣습니다.
+5. 테스트 창에서 `에어컨 상태 알려줘`, `26도로 냉방 켜줘`처럼 호출합니다.
+
 ### `GET /api/ac/status`
 
 에어컨 상태와 UI 제어 범위를 반환합니다.
