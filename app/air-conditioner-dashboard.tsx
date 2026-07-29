@@ -517,7 +517,6 @@ export function AirConditionerDashboard() {
               />
               <div className="mt-2 flex justify-between text-xs font-semibold text-slate-500">
                 <span>{controls.temperature.min}℃</span>
-                <span>{controls.temperature.max}℃</span>
                 <span>송풍</span>
               </div>
             </div>
