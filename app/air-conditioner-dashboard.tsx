@@ -104,14 +104,13 @@ export function AirConditionerDashboard() {
   const hasSyncedFanMode = useRef(false);
   const delayedRefreshTimers = useRef<number[]>([]);
   const toastTimer = useRef<number | null>(null);
-  const climateCommandTimer = useRef<number | null>(null);
+  const lastClimateCommit = useRef<{ signature: string; at: number } | null>(null);
   const pendingDesiredStatus = useRef<PendingDesiredStatus | null>(null);
 
   const fetchStatus = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setPendingAction("status");
     setError(null);
     if (!silent) {
-      clearClimateCommandTimer();
       delayedRefreshTimers.current.forEach((timer) => window.clearTimeout(timer));
       delayedRefreshTimers.current = [];
       pendingDesiredStatus.current = null;
@@ -177,7 +176,6 @@ export function AirConditionerDashboard() {
       window.clearInterval(interval);
       delayedRefreshTimers.current.forEach((timer) => window.clearTimeout(timer));
       if (toastTimer.current) window.clearTimeout(toastTimer.current);
-      if (climateCommandTimer.current) window.clearTimeout(climateCommandTimer.current);
     };
   }, [fetchSchedules, fetchStatus]);
 
@@ -283,7 +281,6 @@ export function AirConditionerDashboard() {
   }
 
   async function togglePower() {
-    clearClimateCommandTimer();
     const success = await submitCommand("power-toggle", "/api/ac/power", {
       power: powerOn ? "off" : "on",
     });
@@ -295,30 +292,35 @@ export function AirConditionerDashboard() {
 
   function changeTargetTemperature(temperature: number) {
     setTargetTemperature(temperature);
-    queueClimateCommand(temperature, targetFanMode);
   }
 
   function changeTargetFanMode(fanMode: string) {
     setTargetFanMode(fanMode);
-    queueClimateCommand(targetTemperature, fanMode);
   }
 
-  function queueClimateCommand(temperature: number, fanMode: string) {
-    clearClimateCommandTimer();
-
-    climateCommandTimer.current = window.setTimeout(() => {
-      void submitCommand(
-        "climate",
-        "/api/ac/climate",
-        buildClimateCommandBody(temperature, fanMode, controls.temperature),
-      );
-    }, 450);
+  function commitTargetTemperature(temperature: number) {
+    commitClimateCommand(temperature, targetFanMode);
   }
 
-  function clearClimateCommandTimer() {
-    if (!climateCommandTimer.current) return;
-    window.clearTimeout(climateCommandTimer.current);
-    climateCommandTimer.current = null;
+  function commitTargetFanMode(fanModeIndex: number) {
+    const fanMode = controls.fanModes[fanModeIndex];
+    if (fanMode) commitClimateCommand(targetTemperature, fanMode);
+  }
+
+  function commitClimateCommand(temperature: number, fanMode: string) {
+    const body = buildClimateCommandBody(temperature, fanMode, controls.temperature);
+    const signature = JSON.stringify(body);
+    const lastCommit = lastClimateCommit.current;
+
+    if (lastCommit?.signature === signature && Date.now() - lastCommit.at < 1_000) {
+      return;
+    }
+
+    lastClimateCommit.current = {
+      signature,
+      at: Date.now(),
+    };
+    void submitCommand("climate", "/api/ac/climate", body);
   }
 
   function showToast(message: string) {
@@ -378,7 +380,6 @@ export function AirConditionerDashboard() {
 
   function handleRequestError(requestError: unknown) {
     if (requestError instanceof AuthRequiredError) {
-      clearClimateCommandTimer();
       delayedRefreshTimers.current.forEach((timer) => window.clearTimeout(timer));
       delayedRefreshTimers.current = [];
       pendingDesiredStatus.current = null;
@@ -506,6 +507,10 @@ export function AirConditionerDashboard() {
                 step={controls.temperature.step}
                 value={targetTemperature}
                 onChange={(event) => changeTargetTemperature(Number(event.target.value))}
+                onPointerUp={(event) => commitTargetTemperature(Number(event.currentTarget.value))}
+                onTouchEnd={(event) => commitTargetTemperature(Number(event.currentTarget.value))}
+                onKeyUp={(event) => commitTargetTemperature(Number(event.currentTarget.value))}
+                onBlur={(event) => commitTargetTemperature(Number(event.currentTarget.value))}
                 disabled={pendingAction !== null}
                 className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label="희망 온도"
@@ -532,6 +537,10 @@ export function AirConditionerDashboard() {
                   const nextFanMode = controls.fanModes[Number(event.target.value)];
                   if (nextFanMode) changeTargetFanMode(nextFanMode);
                 }}
+                onPointerUp={(event) => commitTargetFanMode(Number(event.currentTarget.value))}
+                onTouchEnd={(event) => commitTargetFanMode(Number(event.currentTarget.value))}
+                onKeyUp={(event) => commitTargetFanMode(Number(event.currentTarget.value))}
+                onBlur={(event) => commitTargetFanMode(Number(event.currentTarget.value))}
                 disabled={pendingAction !== null}
                 className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label="바람세기"
