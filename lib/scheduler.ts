@@ -91,6 +91,7 @@ type RulesResponse = {
 };
 
 const RULE_NAME_PREFIX = "SmartThings AC Reservation";
+const TIMER_RULE_MARKER = "TIMER";
 const WIND_DOWN_RULE_MARKER = "WIND_DOWN";
 const WIND_DOWN_TIMER_RULE_MARKER = `${WIND_DOWN_RULE_MARKER}_OFF`;
 
@@ -110,6 +111,7 @@ export async function createPowerSchedule(
   powerValue: unknown,
   runAtValue: unknown,
   coolingSetpointValue?: unknown,
+  options: { timer?: boolean } = {},
 ) {
   const power = validatePower(powerValue);
   const runAt = validateRunAt(runAtValue);
@@ -126,6 +128,7 @@ export async function createPowerSchedule(
     coolingSetpoint,
     modeCapability: config.modeCapability,
     temperatureCapability: config.temperatureCapability,
+    timer: options.timer,
   });
 
   const rule = await smartThingsFetch<Rule>(
@@ -220,6 +223,7 @@ function createRuleRequest(
     coolingSetpoint,
     modeCapability,
     temperatureCapability,
+    timer,
   }: {
     deviceId: string;
     component: string;
@@ -228,6 +232,7 @@ function createRuleRequest(
     coolingSetpoint?: number;
     modeCapability: string;
     temperatureCapability: string;
+    timer?: boolean;
   },
 ) {
   const dateTime = getDateTimeParts(runAt, timeZoneId);
@@ -266,7 +271,7 @@ function createRuleRequest(
   }
 
   return {
-    name: `${RULE_NAME_PREFIX} ${power.toUpperCase()} ${runAt.toISOString()}`,
+    name: `${RULE_NAME_PREFIX} ${timer ? `${TIMER_RULE_MARKER} ` : ""}${power.toUpperCase()} ${runAt.toISOString()}`,
     timeZoneId,
     actions: [
       {
@@ -323,7 +328,8 @@ function ruleToSchedule(rule: Rule): PowerSchedule | null {
   );
   const sleepDurationMs = readSleepDurationMs(everyAction?.actions);
   const windDown = rule.name.includes(WIND_DOWN_RULE_MARKER);
-  const timer = rule.name.includes(WIND_DOWN_TIMER_RULE_MARKER);
+  const timer =
+    rule.name.includes(TIMER_RULE_MARKER) || rule.name.includes(WIND_DOWN_TIMER_RULE_MARKER);
 
   if (!specific || (power !== "on" && power !== "off")) {
     return null;

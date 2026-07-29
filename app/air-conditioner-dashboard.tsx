@@ -94,7 +94,7 @@ export function AirConditionerDashboard() {
   const [targetFanMode, setTargetFanMode] = useState(FALLBACK_CONTROLS.fanModes[0]);
   const [scheduleOnTemperature, setScheduleOnTemperature] = useState(24);
   const [scheduleOnAt, setScheduleOnAt] = useState(() => toDatetimeLocal(30));
-  const [scheduleOffAt, setScheduleOffAt] = useState(() => toDatetimeLocal(60));
+  const [scheduleOffMinutes, setScheduleOffMinutes] = useState(30);
   const [schedules, setSchedules] = useState<PowerSchedule[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [authRequired, setAuthRequired] = useState(false);
@@ -263,6 +263,7 @@ export function AirConditionerDashboard() {
           power,
           runAt: new Date(localRunAt).toISOString(),
           ...(power === "on" ? { coolingSetpoint } : {}),
+          ...(power === "off" ? { timer: true } : {}),
         }),
       });
       setAuthRequired(false);
@@ -270,8 +271,6 @@ export function AirConditionerDashboard() {
 
       if (power === "on") {
         setScheduleOnAt(toDatetimeLocal(30));
-      } else {
-        setScheduleOffAt(toDatetimeLocal(60));
       }
     } catch (requestError) {
       handleRequestError(requestError);
@@ -539,14 +538,13 @@ export function AirConditionerDashboard() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-slate-500">전원 예약</p>
-              <h2 className="mt-1 text-xl font-bold text-slate-950">켜짐 / 꺼짐 예약</h2>
+              <h2 className="mt-1 text-xl font-bold text-slate-950">켜짐 예약 / 꺼짐 타이머</h2>
             </div>
             <CalendarClock className="h-7 w-7 text-sky-700" />
           </div>
 
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
             <ScheduleForm
-              power="on"
               label="켜짐 예약"
               value={scheduleOnAt}
               onChange={setScheduleOnAt}
@@ -557,12 +555,10 @@ export function AirConditionerDashboard() {
               temperatureRange={controls.temperature}
               onTemperatureChange={setScheduleOnTemperature}
             />
-            <ScheduleForm
-              power="off"
-              label="꺼짐 예약"
-              value={scheduleOffAt}
-              onChange={setScheduleOffAt}
-              onSubmit={() => createSchedule("off", scheduleOffAt)}
+            <OffTimerForm
+              minutes={scheduleOffMinutes}
+              onMinutesChange={setScheduleOffMinutes}
+              onSubmit={() => createSchedule("off", toDatetimeLocal(scheduleOffMinutes))}
               loading={pendingAction === "schedule-off"}
               disabled={pendingAction !== null}
             />
@@ -634,7 +630,6 @@ export function AirConditionerDashboard() {
 }
 
 function ScheduleForm({
-  power,
   label,
   value,
   onChange,
@@ -645,7 +640,6 @@ function ScheduleForm({
   temperatureRange,
   onTemperatureChange,
 }: {
-  power: PowerState;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -658,21 +652,15 @@ function ScheduleForm({
 }) {
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
-      <label className="text-sm font-bold text-slate-800" htmlFor={`schedule-${power}`}>
+      <label className="text-sm font-bold text-slate-800" htmlFor="schedule-on">
         {label}
       </label>
-      {power === "on" ? (
-        <p className="mt-1 text-xs font-semibold text-slate-500">
-          냉방 모드로 켜고 선택한 희망 온도를 적용합니다.
-        </p>
-      ) : (
-        <p className="mt-1 text-xs font-semibold text-slate-500">
-          예약 시간에 전원을 끕니다.
-        </p>
-      )}
+      <p className="mt-1 text-xs font-semibold text-slate-500">
+        냉방 모드로 켜고 선택한 희망 온도를 적용합니다.
+      </p>
       <div className="mt-3 min-w-0 overflow-hidden rounded-md">
         <input
-          id={`schedule-${power}`}
+          id="schedule-on"
           type="datetime-local"
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -680,7 +668,7 @@ function ScheduleForm({
           className="schedule-datetime-input block h-11 w-full max-w-full min-w-0 appearance-none rounded-md border border-slate-300 bg-white px-3 py-0 text-base font-semibold leading-none text-slate-900 shadow-sm outline-none transition focus:border-sky-600 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
         />
       </div>
-      {power === "on" && temperatureRange && typeof temperature === "number" && onTemperatureChange ? (
+      {temperatureRange && typeof temperature === "number" && onTemperatureChange ? (
         <div className="mt-4">
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm font-bold text-slate-800">희망 온도</span>
@@ -708,14 +696,89 @@ function ScheduleForm({
         type="button"
         onClick={onSubmit}
         disabled={disabled}
-        className={`mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-          power === "on"
-            ? "bg-sky-600 text-white hover:bg-sky-700"
-            : "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-        }`}
+        className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-sky-600 px-4 text-sm font-bold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
         예약
+      </button>
+    </div>
+  );
+}
+
+function OffTimerForm({
+  minutes,
+  onMinutesChange,
+  onSubmit,
+  loading,
+  disabled,
+}: {
+  minutes: number;
+  onMinutesChange: (value: number) => void;
+  onSubmit: () => void;
+  loading: boolean;
+  disabled: boolean;
+}) {
+  const timerOptions = useMemo(() => Array.from({ length: 60 }, (_, index) => index + 1), []);
+
+  return (
+    <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+      <div>
+        <p className="text-sm font-bold text-slate-800">꺼짐 타이머</p>
+        <p className="mt-1 text-xs font-semibold text-slate-500">
+          선택한 시간이 지나면 전원을 끕니다.
+        </p>
+      </div>
+
+      <div className="mt-4 rounded-md border border-slate-200 bg-white p-3">
+        <div className="relative mx-auto h-40 max-w-44 overflow-hidden">
+          <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 h-12 -translate-y-1/2 rounded-md border-y border-slate-200 bg-sky-50/70" />
+          <select
+            value={minutes}
+            onChange={(event) => onMinutesChange(Number(event.target.value))}
+            disabled={disabled}
+            size={5}
+            aria-label="꺼짐까지 남은 시간"
+            className="relative z-20 h-40 w-full appearance-none overflow-y-auto bg-transparent text-center text-2xl font-bold text-slate-950 outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {timerOptions.map((option) => (
+              <option key={option} value={option} className="py-2 text-center text-lg">
+                {option}분
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mt-3 flex items-end justify-center gap-1">
+          <span className="text-4xl font-bold text-slate-950">{minutes}</span>
+          <span className="pb-1 text-sm font-bold text-slate-500">분 후 꺼짐</span>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <input
+          type="range"
+          min={1}
+          max={60}
+          step={1}
+          value={minutes}
+          onChange={(event) => onMinutesChange(Number(event.target.value))}
+          disabled={disabled}
+          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label="꺼짐 타이머 분"
+        />
+        <div className="mt-2 flex justify-between text-xs font-semibold text-slate-500">
+          <span>1분</span>
+          <span>60분</span>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={disabled}
+        className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
+        {minutes}분 후 꺼짐
       </button>
     </div>
   );
@@ -935,7 +998,9 @@ function formatScheduleDetail(schedule: PowerSchedule) {
   if (schedule.power === "off") {
     const offAt = schedule.finalOffAt ?? schedule.runAt;
     if (schedule.timer) {
-      return `전원 꺼짐 ${formatDateTime(offAt)}`;
+      return schedule.status === "pending"
+        ? `${formatRemainingMinutes(offAt)} 후 전원 꺼짐`
+        : `전원 꺼짐 ${formatDateTime(offAt)}`;
     }
 
     if (schedule.windDown) {
@@ -949,4 +1014,10 @@ function formatScheduleDetail(schedule: PowerSchedule) {
   const temperature =
     typeof schedule.coolingSetpoint === "number" ? `${schedule.coolingSetpoint}℃` : "온도 미확인";
   return `${formatDateTime(schedule.runAt)} · 냉방 · ${temperature}`;
+}
+
+function formatRemainingMinutes(value: string) {
+  const remainingMs = new Date(value).getTime() - Date.now();
+  const minutes = Math.max(1, Math.ceil(remainingMs / 60_000));
+  return `${minutes}분`;
 }

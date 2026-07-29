@@ -223,7 +223,11 @@ KV_REST_API_TOKEN=your_upstash_redis_rest_token
 { "power": "off", "runAt": "2026-07-27T23:30:00.000Z" }
 ```
 
-꺼짐 예약은 지정한 시각에 전원을 끄는 SmartThings Rule을 생성합니다.
+꺼짐 타이머 UI는 1분부터 60분까지 1분 단위로 선택한 뒤, 해당 시간이 지난 시각에 전원을 끄는 SmartThings Rule을 생성합니다. API에는 절대 시각을 직접 보낼 수도 있습니다.
+
+```json
+{ "power": "off", "runAt": "2026-07-27T23:30:00.000Z", "timer": true }
+```
 
 켜짐 예약은 냉방 모드로 고정되며 `coolingSetpoint`로 희망 온도를 지정합니다.
 

@@ -22,8 +22,11 @@ export async function POST(request: Request) {
       power?: unknown;
       runAt?: unknown;
       coolingSetpoint?: unknown;
+      timer?: unknown;
     };
-    const schedule = await createPowerSchedule(body.power, body.runAt, body.coolingSetpoint);
+    const schedule = await createPowerSchedule(body.power, body.runAt, body.coolingSetpoint, {
+      timer: body.timer === true,
+    });
     const schedules = await listPowerSchedules();
     return jsonResponse({ schedule, schedules }, { status: 201 });
   } catch (error) {
